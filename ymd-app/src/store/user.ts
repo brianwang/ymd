@@ -1,0 +1,32 @@
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+
+export const useUserStore = defineStore('user', () => {
+  const token = ref(uni.getStorageSync('token') || '');
+  const userInfo = ref(uni.getStorageSync('userInfo') || null);
+
+  const setToken = (newToken: string) => {
+    token.value = newToken;
+    uni.setStorageSync('token', newToken);
+  };
+
+  const setUserInfo = (info: any) => {
+    userInfo.value = info;
+    uni.setStorageSync('userInfo', info);
+  };
+
+  const logout = () => {
+    token.value = '';
+    userInfo.value = null;
+    uni.removeStorageSync('token');
+    uni.removeStorageSync('userInfo');
+  };
+
+  return {
+    token,
+    userInfo,
+    setToken,
+    setUserInfo,
+    logout,
+  };
+});
