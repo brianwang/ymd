@@ -1,0 +1,12 @@
+- [x] “我的/个人信息”页视觉风格与主题一致：信息区、账户区、菜单区层级清晰，触控反馈明显
+- [x] “我的/个人信息”页不再出现“开发中”占位提示；所有菜单项均具备明确行为
+- [x] 已新增“编辑个人资料”页：支持修改昵称与头像并保存，保存后回到“我的”页正确回显
+- [x] `PUT /api/v1/users/me` 更新昵称/头像可用（含基本校验：昵称去空白后 2–20）
+- [x] `POST /api/v1/media/upload` 上传头像后可在小程序端正常显示（URL 可用）
+- [x] 已新增 Alembic 迁移：创建 `events` 与 `event_registrations` 表并可升级到 head
+- [x] `GET /api/v1/events` 与 `GET /api/v1/events/{id}` 可返回已发布活动
+- [x] 报名与取消报名接口可用：`POST /api/v1/events/{id}/registrations`、`DELETE /api/v1/events/{id}/registrations/me`
+- [x] `GET /api/v1/users/me/event-registrations` 可返回我的报名列表（包含活动信息），并被“我的活动”页正确消费
+- [x] 已新增“我的活动”页：可展示报名列表、支持下拉刷新与取消报名；活动详情页可报名/取消形成闭环
+- [x] 已新增“我的订单”页：可进入且在无订单数据时展示空态与引导按钮
+- [x] `ymd-app` 与 `ymd-server` 的基础校验通过（至少：小程序端 type-check/构建不报错，后端启动与迁移可执行）

@@ -9,6 +9,8 @@ class User(Base):
     inviter_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     union_id = Column(String, unique=True, index=True, nullable=True)
     open_id = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    hashed_password = Column(String, nullable=True)
     nickname = Column(String, index=True, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)

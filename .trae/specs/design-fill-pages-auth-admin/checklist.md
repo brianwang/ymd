@@ -1,0 +1,10 @@
+- [x] 后端数据库迁移可从当前版本升级到最新 head（`alembic upgrade head` 成功）
+- [x] `POST /api/v1/auth/register` 可注册新用户并返回 JWT
+- [x] `POST /api/v1/auth/login` 可登录并返回 JWT
+- [x] 微信登录用户仍可正常 `wx-login` 并访问 `/users/me`
+- [x] 小程序“活动/共居/我的”页面不再是纯占位文字，具备可浏览内容与基础交互
+- [x] 小程序端可完成邮箱注册/登录或绑定邮箱（按 Spec 的入口设计）
+- [x] 管理 API 仅管理员可访问（非管理员访问返回 403）
+- [x] 后台管理端可登录并完成：查看用户列表、查看帖子列表、配置奖励参数
+- [x] 奖励参数变更后在服务端生效（并能通过接口读到新值）
+- [x] `ymd-app` 与 `ymd-admin` 均通过 `npm run type-check`

@@ -1,63 +1,77 @@
 <template>
-  <view class="container">
-    <view class="card">
-      <view class="card-top">
-        <text class="title">积分余额</text>
-        <text class="nickname">{{ nickname }}</text>
-      </view>
-      <view class="balance">
-        <text class="balance-num">{{ points }}</text>
-        <text class="balance-unit">分</text>
-      </view>
-    </view>
+  <view class="ymd-page">
+    <AppBar title="积分中心" back action-text="邀请" @action="goInvitePoster" />
+    <view class="ymd-container ymd-page-inner">
+      <Card class="balance-card">
+        <view class="balance-top">
+          <text class="balance-label">当前积分</text>
+          <text class="nickname">{{ nickname }}</text>
+        </view>
+        <view class="balance">
+          <text class="balance-num">{{ points }}</text>
+          <text class="balance-unit">分</text>
+        </view>
+      </Card>
 
-    <view class="section-title">任务中心</view>
-    <view class="task-card">
-      <view class="task-row">
-        <view class="task-left">
-          <text class="task-title">每日签到</text>
-          <text class="task-sub">+{{ taskSignInDelta }} 积分</text>
-        </view>
-        <button class="task-btn primary" size="mini" :disabled="loading || taskSignInAwarded" @click="signIn">
-          {{ taskSignInAwarded ? '已完成' : '去签到' }}
-        </button>
+      <view class="ymd-section">
+        <SectionHeader title="任务中心" />
+        <Card class="task-card">
+          <view class="task-row">
+            <view class="task-left">
+              <text class="task-title">每日签到</text>
+              <text class="task-sub">+{{ taskSignInDelta }} 积分</text>
+            </view>
+            <button class="task-btn ymd-btn" size="mini" :disabled="loading || taskSignInAwarded" @click="signIn">
+              {{ taskSignInAwarded ? '已完成' : '去签到' }}
+            </button>
+          </view>
+          <Divider inset />
+          <view class="task-row">
+            <view class="task-left">
+              <text class="task-title">发布首帖</text>
+              <text class="task-sub">+{{ taskFirstPostDelta }} 积分</text>
+            </view>
+            <button class="task-btn ymd-btn ghost" size="mini" :disabled="loading || taskFirstPostAwarded" @click="firstPost">
+              {{ taskFirstPostAwarded ? '已完成' : '领取奖励' }}
+            </button>
+          </view>
+          <Divider inset />
+          <view class="task-row">
+            <view class="task-left">
+              <text class="task-title">邀请好友</text>
+              <text class="task-sub">生成邀请海报分享给好友</text>
+            </view>
+            <button class="task-btn ymd-btn ghost" size="mini" :disabled="loading" @click="goInvitePoster">去邀请</button>
+          </view>
+        </Card>
       </view>
-      <view class="task-row">
-        <view class="task-left">
-          <text class="task-title">发布首帖</text>
-          <text class="task-sub">+{{ taskFirstPostDelta }} 积分</text>
-        </view>
-        <button class="task-btn" size="mini" :disabled="loading || taskFirstPostAwarded" @click="firstPost">
-          {{ taskFirstPostAwarded ? '已完成' : '领取奖励' }}
-        </button>
-      </view>
-      <view class="task-row">
-        <view class="task-left">
-          <text class="task-title">邀请好友</text>
-          <text class="task-sub">生成邀请海报分享给好友</text>
-        </view>
-        <button class="task-btn" size="mini" :disabled="loading" @click="goInvitePoster">去邀请</button>
-      </view>
-    </view>
 
-    <view class="section-title">积分流水</view>
-    <view class="list">
-      <view class="item" v-for="it in ledger" :key="it.id">
-        <view class="left">
-          <text class="event">{{ eventLabel(it.event_type) }}</text>
-          <text class="time">{{ formatTime(it.created_at) }}</text>
-        </view>
-        <text class="delta" :class="{ plus: it.delta > 0, minus: it.delta < 0 }">
-          {{ it.delta > 0 ? `+${it.delta}` : `${it.delta}` }}
-        </text>
-      </view>
-      <view class="empty" v-if="!loading && ledger.length === 0">
-        <text>暂无流水</text>
-      </view>
-      <view class="footer" v-if="ledger.length > 0">
-        <text v-if="loading">加载中...</text>
-        <text v-else-if="finished">没有更多了</text>
-        <text v-else>上拉加载更多</text>
+      <view class="ymd-section">
+        <SectionHeader title="积分流水" />
+        <Card class="list">
+          <EmptyState
+            v-if="!loading && ledger.length === 0"
+            image="/static/empty/empty-list-v2.png"
+            title="暂无流水"
+            desc="完成任务后会在这里看到记录"
+          />
+          <view v-else>
+            <view class="item" v-for="it in ledger" :key="it.id">
+              <view class="left">
+                <text class="event">{{ eventLabel(it.event_type) }}</text>
+                <text class="time">{{ formatTime(it.created_at) }}</text>
+              </view>
+              <text class="delta" :class="{ plus: it.delta > 0, minus: it.delta < 0 }">
+                {{ it.delta > 0 ? `+${it.delta}` : `${it.delta}` }}
+              </text>
+            </view>
+            <view class="footer" v-if="ledger.length > 0">
+              <text v-if="loading">加载中...</text>
+              <text v-else-if="finished">没有更多了</text>
+              <text v-else>上拉加载更多</text>
+            </view>
+          </view>
+        </Card>
       </view>
     </view>
   </view>
@@ -68,6 +82,11 @@ import { computed, ref } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { request } from '../../utils/request';
 import { useUserStore } from '../../store/user';
+import AppBar from '@/components/ui/AppBar.vue';
+import Card from '@/components/ui/Card.vue';
+import Divider from '@/components/ui/Divider.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
 
 type LedgerItem = {
   id: number;
@@ -208,33 +227,29 @@ onReachBottom(() => {
 });
 </script>
 
-<style scoped>
-.container { padding: 16px; }
-.card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
-.card-top { display: flex; justify-content: space-between; align-items: center; }
-.title { font-size: 14px; color: #666; }
-.nickname { font-size: 14px; color: #333; }
+<style scoped lang="scss">
+.balance-card { padding: 18px; box-shadow: $ymd-v2-shadow-sm; background: linear-gradient(180deg, rgba(109, 94, 252, 0.10), rgba(255,255,255, 0.92)); }
+.balance-top { display: flex; justify-content: space-between; align-items: center; }
+.balance-label { font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; font-weight: 800; }
+.nickname { font-size: $ymd-v2-font-md; color: $ymd-v2-color-text; font-weight: 900; }
 .balance { margin-top: 14px; display: flex; align-items: baseline; }
-.balance-num { font-size: 40px; font-weight: 700; color: #111; line-height: 1; }
-.balance-unit { margin-left: 6px; font-size: 14px; color: #666; }
-.task-card { background: #fff; border-radius: 12px; overflow: hidden; }
-.task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #f2f2f2; }
-.task-row:last-child { border-bottom: none; }
+.balance-num { font-size: 46px; font-weight: 950; color: $ymd-v2-color-text; line-height: 1; }
+.balance-unit { margin-left: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
+
+.task-card { overflow: hidden; }
+.task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px; }
 .task-left { display: flex; flex-direction: column; }
-.task-title { font-size: 15px; color: #111; }
-.task-sub { margin-top: 6px; font-size: 12px; color: #999; }
-.task-btn { font-size: 12px; }
-.primary { background: #007AFF; color: #fff; }
-.section-title { margin-top: 18px; margin-bottom: 10px; font-size: 14px; color: #666; }
-.list { background: #fff; border-radius: 12px; overflow: hidden; }
-.item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f2f2f2; }
+.task-title { font-size: 15px; color: $ymd-v2-color-text; font-weight: 900; }
+.task-sub { margin-top: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
+.task-btn { font-size: 12px; padding: 0 14px; height: 34px; line-height: 34px; }
+.list { overflow: hidden; padding: 14px; }
+.item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid $ymd-v2-color-line; }
 .item:last-child { border-bottom: none; }
 .left { display: flex; flex-direction: column; }
-.event { font-size: 15px; color: #111; }
-.time { margin-top: 6px; font-size: 12px; color: #999; }
+.event { font-size: 15px; color: $ymd-v2-color-text; font-weight: 900; }
+.time { margin-top: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
 .delta { font-size: 16px; font-weight: 600; }
-.plus { color: #16a34a; }
-.minus { color: #ef4444; }
-.empty { padding: 24px 0; text-align: center; color: #999; }
-.footer { padding: 12px 0; text-align: center; color: #999; font-size: 12px; }
+.plus { color: $ymd-v2-color-success; font-weight: 900; }
+.minus { color: $ymd-v2-color-danger; font-weight: 900; }
+.footer { padding: 12px 0 0; text-align: center; color: $ymd-v2-color-muted; font-size: 12px; }
 </style>

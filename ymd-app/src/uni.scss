@@ -14,14 +14,15 @@
 
 @import "uview-plus/theme.scss";
 @import "uview-plus/index.scss";
+@import "@/styles/tokens.scss";
 
 /* 颜色变量 */
 
 /* 行为相关颜色 */
-$uni-color-primary: #007aff;
-$uni-color-success: #4cd964;
-$uni-color-warning: #f0ad4e;
-$uni-color-error: #dd524d;
+$uni-color-primary: $ymd-v2-color-brand;
+$uni-color-success: $ymd-v2-color-success;
+$uni-color-warning: $ymd-v2-color-warning;
+$uni-color-error: $ymd-v2-color-danger;
 
 /* 文字基本颜色 */
 $uni-text-color: #333; // 基本色
@@ -32,19 +33,19 @@ $uni-text-color-disable: #c0c0c0;
 
 /* 背景颜色 */
 $uni-bg-color: #fff;
-$uni-bg-color-grey: #f8f8f8;
+$uni-bg-color-grey: $ymd-v2-color-bg;
 $uni-bg-color-hover: #f1f1f1; // 点击状态颜色
 $uni-bg-color-mask: rgba(0, 0, 0, 0.4); // 遮罩颜色
 
 /* 边框颜色 */
-$uni-border-color: #c8c7cc;
+$uni-border-color: $ymd-v2-color-line;
 
 /* 尺寸变量 */
 
 /* 文字尺寸 */
 $uni-font-size-sm: 12px;
 $uni-font-size-base: 14px;
-$uni-font-size-lg: 16;
+$uni-font-size-lg: 16px;
 
 /* 图片尺寸 */
 $uni-img-size-sm: 20px;
@@ -77,3 +78,91 @@ $uni-color-subtitle: #555; // 二级标题颜色
 $uni-font-size-subtitle: 18px;
 $uni-color-paragraph: #3f536e; // 文章段落颜色
 $uni-font-size-paragraph: 15px;
+
+.ymd-page {
+  min-height: 100vh;
+  background: $ymd-v2-color-bg;
+  color: $ymd-v2-color-text;
+}
+
+.ymd-container {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-left: $ymd-v2-space-3;
+  padding-right: $ymd-v2-space-3;
+}
+
+.ymd-page-inner {
+  padding-top: $ymd-v2-space-3;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+
+.ymd-card {
+  background: $ymd-v2-color-surface;
+  border: 1px solid $ymd-v2-color-line;
+  border-radius: $ymd-v2-radius-lg;
+  box-shadow: $ymd-v2-shadow-xs;
+}
+
+.ymd-btn {
+  background: $ymd-v2-color-brand;
+  color: #fff;
+  border-radius: $ymd-v2-radius-pill;
+  font-weight: 700;
+}
+
+.ymd-btn.ghost {
+  background: $ymd-v2-color-soft;
+  color: $ymd-v2-color-brand;
+  border: 1px solid rgba(18, 200, 192, 0.25);
+}
+
+.ymd-pill {
+  background: $ymd-v2-color-surface;
+  border: 1px solid $ymd-v2-color-line;
+  border-radius: $ymd-v2-radius-pill;
+}
+
+.ymd-pill.active {
+  background: $ymd-v2-color-brand;
+  border-color: $ymd-v2-color-brand;
+}
+
+.ymd-chip {
+  background: $ymd-v2-color-surface;
+  border: 1px solid $ymd-v2-color-line;
+  border-radius: $ymd-v2-radius-pill;
+}
+
+.ymd-chip.active {
+  background: $ymd-v2-color-brand;
+  border-color: $ymd-v2-color-brand;
+}
+
+.ymd-divider {
+  height: 1px;
+  background: $ymd-v2-color-line;
+}
+
+.ymd-section {
+  margin-top: $ymd-v2-space-4;
+}
+
+.ymd-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $ymd-v2-space-2;
+}
+
+.ymd-section-title {
+  font-size: $ymd-v2-font-lg;
+  font-weight: 800;
+  color: $ymd-v2-color-text;
+}
+
+.ymd-section-sub {
+  font-size: $ymd-v2-font-sm;
+  color: $ymd-v2-color-muted;
+}

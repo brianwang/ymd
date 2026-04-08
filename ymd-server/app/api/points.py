@@ -8,12 +8,11 @@ from app.models.user import User
 from app.models.points_ledger import PointsLedger
 from app.schemas.points import SignInResponse, PointsLedgerItem, PointsTaskItem
 from app.services.points import (
-    SIGN_IN_POINTS,
-    FIRST_POST_POINTS,
     award_points,
     sign_in_biz_key,
     first_post_biz_key,
 )
+from app.services.ops_config import get_reward_config
 
 router = APIRouter()
 
@@ -24,19 +23,20 @@ async def sign_in(
 ):
     today = date.today()
     biz_key = sign_in_biz_key(today)
+    cfg = await get_reward_config(db)
     new_points = await award_points(
         db=db,
         user_id=current_user.id,
         event_type="sign_in",
         biz_key=biz_key,
-        delta=SIGN_IN_POINTS,
+        delta=cfg["sign_in_points"],
     )
     await db.commit()
     if new_points is None:
         res = await db.execute(select(User.points).where(User.id == current_user.id))
         points = res.scalar_one()
         return {"awarded": False, "delta": 0, "points": points}
-    return {"awarded": True, "delta": SIGN_IN_POINTS, "points": new_points}
+    return {"awarded": True, "delta": cfg["sign_in_points"], "points": new_points}
 
 @router.get("/ledger", response_model=list[PointsLedgerItem])
 async def ledger(
@@ -61,6 +61,7 @@ async def tasks(
     current_user: User = Depends(get_current_active_user),
 ):
     today = date.today()
+    cfg = await get_reward_config(db)
     sign_key = sign_in_biz_key(today)
     first_post_key = first_post_biz_key(current_user.id)
     q = (
@@ -77,13 +78,13 @@ async def tasks(
             "key": "sign_in",
             "title": "每日签到",
             "awarded": sign_key in existing,
-            "delta": SIGN_IN_POINTS,
+            "delta": cfg["sign_in_points"],
         },
         {
             "key": "first_post",
             "title": "发布首帖",
             "awarded": first_post_key in existing,
-            "delta": FIRST_POST_POINTS,
+            "delta": cfg["first_post_points"],
         },
     ]
 
@@ -93,16 +94,17 @@ async def first_post(
     current_user: User = Depends(get_current_active_user),
 ):
     biz_key = first_post_biz_key(current_user.id)
+    cfg = await get_reward_config(db)
     new_points = await award_points(
         db=db,
         user_id=current_user.id,
         event_type="first_post",
         biz_key=biz_key,
-        delta=FIRST_POST_POINTS,
+        delta=cfg["first_post_points"],
     )
     await db.commit()
     if new_points is None:
         res = await db.execute(select(User.points).where(User.id == current_user.id))
         points = res.scalar_one()
         return {"awarded": False, "delta": 0, "points": points}
-    return {"awarded": True, "delta": FIRST_POST_POINTS, "points": new_points}
+    return {"awarded": True, "delta": cfg["first_post_points"], "points": new_points}

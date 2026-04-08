@@ -1,67 +1,117 @@
 <template>
-  <view class="page">
-    <view v-if="post" class="post">
-      <view class="post-content">{{ post.content }}</view>
-      <view v-if="post.image_urls && post.image_urls.length" class="imgs">
-        <image
-          v-for="(url, idx) in post.image_urls"
-          :key="url + '-' + idx"
-          class="img"
-          :src="url"
-          mode="aspectFill"
-          @click.stop="preview(post.image_urls, idx)"
-        />
-      </view>
-      <view class="actions">
-        <button
-          class="like-btn"
-          size="mini"
-          :loading="likeLoading"
-          :disabled="likeLoading"
-          @click="toggleLike"
-        >
-          {{ post.liked_by_me ? '已赞' : '点赞' }} {{ post.like_count }}
-        </button>
-        <text class="meta">{{ formatTime(post.created_at) }}</text>
-        <text class="meta">评论 {{ post.comment_count }}</text>
-      </view>
-    </view>
+  <view class="ymd-page">
+    <AppBar title="帖子详情" back></AppBar>
+    <view class="ymd-container ymd-page-inner page">
+      <Card v-if="post" class="post">
+        <view class="post-head" @click="goUser(post.user_id)">
+          <image class="avatar" :src="post.author?.avatar_url || '/static/placeholder/avatar-v2.png'" mode="aspectFill" />
+          <view class="head-main">
+            <text class="name">{{ post.author?.nickname || `用户 #${post.user_id}` }}</text>
+            <text class="time">{{ formatTime(post.created_at) }}</text>
+          </view>
+          <view class="head-actions" @click.stop="noop">
+            <button
+              v-if="canDelete"
+              class="del-btn ymd-btn ghost"
+              size="mini"
+              :loading="deleting"
+              :disabled="deleting"
+              @click="deletePost"
+            >
+              删除
+            </button>
+          </view>
+        </view>
+        <view class="post-content">{{ post.content }}</view>
+        <view v-if="post.image_urls && post.image_urls.length" class="imgs">
+          <image
+            v-for="(url, idx) in post.image_urls"
+            :key="url + '-' + idx"
+            class="img"
+            :src="url"
+            mode="aspectFill"
+            @click.stop="preview(post.image_urls, idx)"
+          />
+        </view>
+        <view class="actions">
+          <button
+            class="like-btn ymd-btn ghost"
+            size="mini"
+            :loading="likeLoading"
+            :disabled="likeLoading"
+            @click="toggleLike"
+          >
+            {{ post.liked_by_me ? '已赞' : '点赞' }} {{ post.like_count }}
+          </button>
+          <text class="meta">评论 {{ post.comment_count }}</text>
+        </view>
+      </Card>
+      <Card v-else class="post sk">
+        <view class="sk-head">
+          <Skeleton width="36px" height="36px" border-radius="18px"></Skeleton>
+          <view class="sk-head-main">
+            <Skeleton width="140px" height="14px"></Skeleton>
+            <Skeleton width="100px" height="12px"></Skeleton>
+          </view>
+        </view>
+        <view class="sk-body">
+          <Skeleton height="14px"></Skeleton>
+          <Skeleton height="14px" width="76%"></Skeleton>
+          <Skeleton height="110px" border-radius="14px"></Skeleton>
+        </view>
+      </Card>
 
-    <view class="comments">
-      <view class="section-title">评论</view>
-      <view v-if="comments.length === 0 && !commentsLoading" class="empty">暂无评论</view>
-      <view v-for="c in comments" :key="c.id" class="comment">
-        <view class="comment-content">{{ c.content }}</view>
-        <view class="comment-meta">{{ formatTime(c.created_at) }}</view>
-      </view>
-      <view v-if="commentsLoading && comments.length" class="loading">加载中...</view>
+      <Card class="comments">
+        <SectionHeader title="评论"></SectionHeader>
+        <EmptyState
+          v-if="comments.length === 0 && !commentsLoading"
+          image="/static/empty/empty-list-v2.png"
+          title="暂无评论"
+          desc="说点什么，让讨论开始"
+        ></EmptyState>
+        <view v-else>
+          <view v-for="c in comments" :key="c.id" class="comment">
+            <view class="comment-content">{{ c.content }}</view>
+            <view class="comment-meta">{{ formatTime(c.created_at) }}</view>
+          </view>
+          <view v-if="commentsLoading && comments.length" class="loading">加载中...</view>
+        </view>
+      </Card>
     </view>
 
     <view class="composer">
-      <input
-        v-model="commentText"
-        class="input"
-        placeholder="写下评论..."
-        confirm-type="send"
-        @confirm="submitComment"
-      />
-      <button
-        class="send"
-        size="mini"
-        :disabled="submittingComment || !commentText.trim()"
-        :loading="submittingComment"
-        @click="submitComment"
-      >
-        发送
-      </button>
+      <view class="ymd-container composer-inner">
+        <input
+          v-model="commentText"
+          class="input"
+          placeholder="写下评论..."
+          confirm-type="send"
+          @confirm="submitComment"
+        />
+        <button
+          class="send ymd-btn"
+          size="mini"
+          :disabled="submittingComment || !commentText.trim()"
+          :loading="submittingComment"
+          @click="submitComment"
+        >
+          发送
+        </button>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
-import { request } from '@/utils/request';
+import { ensureLoggedIn, request } from '@/utils/request';
+import { useUserStore } from '@/store/user';
+import AppBar from '@/components/ui/AppBar.vue';
+import Card from '@/components/ui/Card.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import Skeleton from '@/components/ui/Skeleton.vue';
 
 type PostOut = {
   id: number;
@@ -73,6 +123,11 @@ type PostOut = {
   created_at: string;
   updated_at?: string | null;
   liked_by_me: boolean;
+  author?: {
+    id: number;
+    nickname?: string | null;
+    avatar_url?: string | null;
+  } | null;
 };
 
 type CommentOut = {
@@ -96,6 +151,16 @@ const commentsLoading = ref(false);
 const likeLoading = ref(false);
 const commentText = ref('');
 const submittingComment = ref(false);
+const deleting = ref(false);
+const userStore = useUserStore();
+
+const canDelete = computed(() => {
+  const meId = (userStore.userInfo as any)?.id;
+  if (!meId || !post.value) return false;
+  return meId === post.value.user_id;
+});
+
+const noop = () => {};
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const formatTime = (value: string) => {
@@ -124,12 +189,25 @@ const loadComments = async () => {
 
 const toggleLike = async () => {
   if (!postId.value || !post.value) return;
+  if (!ensureLoggedIn()) return;
   if (likeLoading.value) return;
   likeLoading.value = true;
+  let prevState: { liked: boolean; like_count: number; comment_count: number } | null = null;
   try {
+    const optimisticLiked = !post.value.liked_by_me;
+    prevState = {
+      liked: post.value.liked_by_me,
+      like_count: post.value.like_count,
+      comment_count: post.value.comment_count,
+    };
+    post.value = {
+      ...post.value,
+      liked_by_me: optimisticLiked,
+      like_count: Math.max(0, post.value.like_count + (optimisticLiked ? 1 : -1)),
+    };
     const data = (await request({
       url: `/posts/${postId.value}/like`,
-      method: 'POST',
+      method: optimisticLiked ? 'POST' : 'DELETE',
     })) as LikeToggleOut;
     post.value = {
       ...post.value,
@@ -137,6 +215,15 @@ const toggleLike = async () => {
       like_count: data.like_count,
       comment_count: data.comment_count,
     };
+  } catch {
+    if (post.value && prevState) {
+      post.value = {
+        ...post.value,
+        liked_by_me: prevState.liked,
+        like_count: prevState.like_count,
+        comment_count: prevState.comment_count,
+      };
+    }
   } finally {
     likeLoading.value = false;
   }
@@ -144,6 +231,7 @@ const toggleLike = async () => {
 
 const submitComment = async () => {
   if (!postId.value || !post.value) return;
+  if (!ensureLoggedIn()) return;
   const text = commentText.value.trim();
   if (!text) return;
   if (submittingComment.value) return;
@@ -162,6 +250,35 @@ const submitComment = async () => {
   }
 };
 
+const goUser = (userId: number) => {
+  uni.navigateTo({ url: `/pages/user/profile?id=${userId}` });
+};
+
+const deletePost = async () => {
+  if (!postId.value) return;
+  if (!ensureLoggedIn()) return;
+  if (deleting.value) return;
+  uni.showModal({
+    title: '确认删除',
+    content: '删除后不可恢复，确定删除？',
+    confirmText: '删除',
+    confirmColor: '#DC2626',
+    success: async (res) => {
+      if (!res.confirm) return;
+      deleting.value = true;
+      try {
+        await request({ url: `/posts/${postId.value}`, method: 'DELETE' });
+        uni.showToast({ title: '已删除', icon: 'success' });
+        setTimeout(() => {
+          uni.navigateBack();
+        }, 300);
+      } finally {
+        deleting.value = false;
+      }
+    },
+  });
+};
+
 const preview = (urls: string[], current: number) => {
   uni.previewImage({ urls, current });
 };
@@ -178,123 +295,137 @@ onLoad(async (options) => {
 });
 </script>
 
-<style>
-.page {
-  padding: 16rpx 16rpx 120rpx;
-}
+<style lang="scss">
+.page { padding-bottom: 90px; }
 .post {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx;
+  padding: 14px;
 }
+.post-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.04);
+}
+.head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.name { font-size: 13px; font-weight: 900; color: $ymd-v2-color-text; }
+.time { font-size: 12px; color: $ymd-v2-color-muted; }
+.head-actions { display: flex; align-items: center; }
+.del-btn { height: 34px; line-height: 34px; padding: 0 14px; font-size: 12px; }
 .post-content {
-  font-size: 30rpx;
-  line-height: 44rpx;
-  color: #111;
+  font-size: 15px;
+  line-height: 22px;
+  color: $ymd-v2-color-text;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .imgs {
-  margin-top: 16rpx;
+  margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10rpx;
+  gap: 8px;
 }
 .img {
-  width: 210rpx;
-  height: 210rpx;
-  border-radius: 12rpx;
-  background: #f2f2f2;
+  width: 104px;
+  height: 104px;
+  border-radius: $ymd-v2-radius-md;
+  background: rgba(15, 23, 42, 0.04);
 }
 .actions {
-  margin-top: 16rpx;
+  margin-top: 12px;
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 10px;
 }
 .like-btn {
-  height: 56rpx;
-  line-height: 56rpx;
-  padding: 0 20rpx;
-  background: #f7f7f7;
-  color: #111;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 800;
 }
 .like-btn[disabled] {
   opacity: 0.6;
 }
 .meta {
-  font-size: 24rpx;
-  color: #666;
+  font-size: 12px;
+  color: $ymd-v2-color-muted;
 }
 .comments {
-  margin-top: 16rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx;
-}
-.section-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #111;
-  margin-bottom: 12rpx;
+  margin-top: 12px;
+  padding: 14px;
 }
 .comment {
-  padding: 14rpx 0;
-  border-top: 1rpx solid #f0f0f0;
+  padding: 10px 0;
+  border-top: 1px solid $ymd-v2-color-line;
 }
 .comment:first-child {
   border-top: 0;
   padding-top: 0;
 }
 .comment-content {
-  font-size: 28rpx;
-  line-height: 40rpx;
-  color: #111;
+  font-size: 14px;
+  line-height: 20px;
+  color: $ymd-v2-color-text;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .comment-meta {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #888;
-}
-.empty {
-  padding: 28rpx 0;
-  text-align: center;
-  color: #888;
-  font-size: 26rpx;
+  margin-top: 6px;
+  font-size: 12px;
+  color: $ymd-v2-color-muted;
 }
 .loading {
-  padding: 16rpx 0 0;
+  padding: 12px 0 0;
   text-align: center;
-  color: #888;
-  font-size: 24rpx;
+  color: $ymd-v2-color-muted;
+  font-size: 12px;
 }
 .composer {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16rpx;
-  background: #fff;
-  border-top: 1rpx solid #f0f0f0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.composer-inner {
   display: flex;
-  gap: 12rpx;
+  gap: 10px;
   align-items: center;
+  padding-left: 0;
+  padding-right: 0;
 }
 .input {
   flex: 1;
-  height: 72rpx;
-  background: #f7f7f7;
-  border-radius: 12rpx;
-  padding: 0 16rpx;
-  font-size: 28rpx;
+  height: 40px;
+  background: rgba(15, 23, 42, 0.04);
+  border-radius: $ymd-v2-radius-md;
+  padding: 0 12px;
+  font-size: 14px;
 }
 .send {
-  height: 72rpx;
-  line-height: 72rpx;
-  padding: 0 22rpx;
-  background: #007aff;
-  color: #fff;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 800;
 }
+
+.sk { padding: 14px; }
+.sk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sk-head-main { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.sk-body { display: flex; flex-direction: column; gap: 10px; }
 </style>

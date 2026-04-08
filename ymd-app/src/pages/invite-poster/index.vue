@@ -1,26 +1,31 @@
 <template>
-  <view class="container">
-    <view class="preview" v-if="posterPath">
-      <image class="poster" :src="posterPath" mode="widthFix" />
-    </view>
-    <view class="preview" v-else>
-      <view class="placeholder">
-        <text v-if="loading">生成中...</text>
-        <text v-else>点击生成邀请海报</text>
+  <view class="ymd-page">
+    <AppBar title="邀请海报" back />
+    <view class="ymd-container ymd-page-inner">
+      <Card class="preview" v-if="posterPath">
+        <image class="poster" :src="posterPath" mode="widthFix" />
+      </Card>
+      <Card class="preview" v-else>
+        <view class="placeholder">
+          <image class="placeholder-bg" src="/static/placeholder/poster-bg-v2.png" mode="aspectFill" />
+          <view class="placeholder-mask"></view>
+          <text v-if="loading">生成中...</text>
+          <text v-else>点击生成邀请海报</text>
+        </view>
+      </Card>
+
+      <view class="btns">
+        <button class="btn ymd-btn" :disabled="loading" @click="generate">生成海报</button>
+        <button class="btn ymd-btn ghost" :disabled="loading || !posterPath" @click="save">保存到相册</button>
       </view>
-    </view>
 
-    <view class="btns">
-      <button class="btn primary" :disabled="loading" @click="generate">生成海报</button>
-      <button class="btn" :disabled="loading || !posterPath" @click="save">保存到相册</button>
+      <canvas
+        canvas-id="posterCanvas"
+        id="posterCanvas"
+        class="canvas"
+        :style="{ width: canvasStyleW, height: canvasStyleH }"
+      />
     </view>
-
-    <canvas
-      canvas-id="posterCanvas"
-      id="posterCanvas"
-      class="canvas"
-      :style="{ width: canvasStyleW, height: canvasStyleH }"
-    />
   </view>
 </template>
 
@@ -29,6 +34,8 @@ import { computed, getCurrentInstance, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { request } from '../../utils/request';
 import { useUserStore } from '../../store/user';
+import AppBar from '@/components/ui/AppBar.vue';
+import Card from '@/components/ui/Card.vue';
 
 const userStore = useUserStore();
 const instance = getCurrentInstance();
@@ -107,21 +114,27 @@ const canvasToTemp = async () => {
 
 const drawPoster = async () => {
   const ctx = uni.createCanvasContext('posterCanvas', instance as any);
-  ctx.setFillStyle('#ffffff');
+  ctx.setFillStyle('#F7FAFB');
   ctx.fillRect(0, 0, canvasW, canvasH);
 
-  ctx.setFillStyle('#111111');
-  ctx.setFontSize(34);
-  ctx.fillText('邀请好友，一起游牧', 40, 90);
+  const g = (ctx as any).createLinearGradient(0, 0, canvasW, 180);
+  g.addColorStop(0, '#12C8C0');
+  g.addColorStop(1, '#6D5EFC');
+  (ctx as any).setFillStyle(g);
+  ctx.fillRect(0, 0, canvasW, 210);
 
-  ctx.setFillStyle('#666666');
-  ctx.setFontSize(22);
+  ctx.setFillStyle('rgba(255,255,255,0.96)');
+  ctx.setFontSize(36);
+  ctx.fillText('邀请好友，一起游牧', 40, 92);
+
+  ctx.setFillStyle('rgba(255,255,255,0.92)');
+  ctx.setFontSize(20);
   ctx.fillText(`昵称：${userNickname.value}`, 40, 140);
-  ctx.fillText(`积分：${userPoints.value}`, 40, 175);
+  ctx.fillText(`积分：${userPoints.value}`, 40, 172);
 
   const qrSize = 320;
   const qrX = Math.floor((canvasW - qrSize) / 2);
-  const qrY = 240;
+  const qrY = 270;
 
   const qrPath = await base64ToPath(qrBase64.value);
   await new Promise<void>((resolve, reject) => {
@@ -135,13 +148,13 @@ const drawPoster = async () => {
     });
   });
 
-  ctx.setFillStyle('#111111');
+  ctx.setFillStyle('#0B1220');
   ctx.setFontSize(20);
   ctx.fillText('扫码加入游牧岛', 220, qrY + qrSize + 55);
 
-  ctx.setFillStyle('#999999');
+  ctx.setFillStyle('#64748B');
   ctx.setFontSize(16);
-  ctx.fillText('海报保存后发给好友或分享到朋友圈', 150, qrY + qrSize + 92);
+  ctx.fillText('保存后发给好友或分享到朋友圈', 170, qrY + qrSize + 92);
 
   await new Promise<void>((resolve) => {
     ctx.draw(false, () => resolve());
@@ -196,13 +209,14 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
-.container { padding: 16px; }
-.preview { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
-.poster { width: 100%; border-radius: 10px; }
-.placeholder { height: 420px; display: flex; justify-content: center; align-items: center; color: #999; }
+<style scoped lang="scss">
+.preview { padding: 12px; overflow: hidden; box-shadow: $ymd-v2-shadow-sm; }
+.poster { width: 100%; border-radius: $ymd-v2-radius-md; }
+.placeholder { height: 420px; position: relative; display: flex; justify-content: center; align-items: center; color: rgba(255,255,255,0.95); font-weight: 800; }
+.placeholder-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.placeholder-mask { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.42)); }
+.placeholder text { position: relative; z-index: 1; }
 .btns { margin-top: 14px; display: flex; gap: 10px; }
-.btn { flex: 1; font-size: 14px; }
-.primary { background: #007AFF; color: #fff; }
+.btn { flex: 1; font-size: 14px; height: 44px; line-height: 44px; font-weight: 700; border-radius: $ymd-radius-md; }
 .canvas { position: fixed; left: -9999px; top: -9999px; }
 </style>

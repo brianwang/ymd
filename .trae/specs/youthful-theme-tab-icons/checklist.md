@@ -1,0 +1,10 @@
+- [x] 小程序端与后台端存在统一的主题 token（颜色/圆角/阴影/文字层级），并在页面中被实际使用
+- [x] `pages.json` 的 tabBar 已配置 iconPath/selectedIconPath，且 4 个 Tab 均显示图标
+- [x] Tab 图标在选中/未选中状态对比明显，文字与 icon 的选中色一致
+- [x] 活动页/共居页不再突兀：背景、卡片、筛选 chips、banner 风格一致
+- [x] 社区页/发帖页/详情页在主题下可读性良好，图片展示圆角与间距统一
+- [x] 我的页/积分中心/邀请海报在主题下可读性良好，“任务中心”视觉更舒适
+- [x] 内置资源可正常加载：banner、空态插画/占位图
+- [x] `ymd-app`：`npm run type-check` 通过
+- [x] `ymd-admin`：`npm run type-check` 通过
+- [x] `ymd-app` 与 `ymd-admin` 的 H5 build 均通过

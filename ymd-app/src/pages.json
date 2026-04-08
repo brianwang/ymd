@@ -3,81 +3,161 @@
 		{
 			"path": "pages/events/index",
 			"style": {
-				"navigationBarTitleText": "探索活动"
+				"navigationBarTitleText": "探索活动",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/events/detail",
+			"style": {
+				"navigationBarTitleText": "活动详情"
+			}
+		},
+		{
+			"path": "pages/events/signup",
+			"style": {
+				"navigationBarTitleText": "活动报名"
+			}
+		},
+		{
+			"path": "pages/events/my",
+			"style": {
+				"navigationBarTitleText": "我的活动",
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/community/index",
 			"style": {
 				"navigationBarTitleText": "社区",
-				"enablePullDownRefresh": true
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/community/create",
 			"style": {
-				"navigationBarTitleText": "发帖"
+				"navigationBarTitleText": "发帖",
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/community/detail",
 			"style": {
-				"navigationBarTitleText": "帖子详情"
+				"navigationBarTitleText": "帖子详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/profile",
+			"style": {
+				"navigationBarTitleText": "用户主页",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/coliving/index",
 			"style": {
-				"navigationBarTitleText": "共居空间"
+				"navigationBarTitleText": "共居空间",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/coliving/detail",
+			"style": {
+				"navigationBarTitleText": "空间详情"
 			}
 		},
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/edit",
+			"style": {
+				"navigationBarTitleText": "编辑个人资料"
+			}
+		},
+		{
+			"path": "pages/orders/index",
+			"style": {
+				"navigationBarTitleText": "我的订单"
+			}
+		},
+		{
+			"path": "pages/auth/register",
+			"style": {
+				"navigationBarTitleText": "邮箱注册"
+			}
+		},
+		{
+			"path": "pages/auth/login",
+			"style": {
+				"navigationBarTitleText": "邮箱登录"
+			}
+		},
+		{
+			"path": "pages/auth/bind-email",
+			"style": {
+				"navigationBarTitleText": "绑定邮箱"
 			}
 		},
 		{
 			"path": "pages/points/index",
 			"style": {
 				"navigationBarTitleText": "积分中心",
-				"enablePullDownRefresh": true
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
 			}
 		},
 		{
 			"path": "pages/invite-poster/index",
 			"style": {
-				"navigationBarTitleText": "邀请海报"
+				"navigationBarTitleText": "邀请海报",
+				"navigationStyle": "custom"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "游牧岛",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarBackgroundColor": "#F6FBFC",
+		"backgroundColor": "#F6FBFC"
 	},
 	"tabBar": {
-		"color": "#7A7E83",
-		"selectedColor": "#007AFF",
-		"borderStyle": "black",
+		"color": "#64748B",
+		"selectedColor": "#12C8C0",
+		"borderStyle": "white",
 		"backgroundColor": "#ffffff",
+		"fontSize": "11px",
 		"list": [
 			{
 				"pagePath": "pages/events/index",
-				"text": "活动"
+				"text": "活动",
+				"iconPath": "static/tab/tab-events-v2.png",
+				"selectedIconPath": "static/tab/tab-events-v2-active.png"
 			},
 			{
 				"pagePath": "pages/community/index",
-				"text": "社区"
+				"text": "社区",
+				"iconPath": "static/tab/tab-community-v2.png",
+				"selectedIconPath": "static/tab/tab-community-v2-active.png"
 			},
 			{
 				"pagePath": "pages/coliving/index",
-				"text": "共居"
+				"text": "共居",
+				"iconPath": "static/tab/tab-coliving-v2.png",
+				"selectedIconPath": "static/tab/tab-coliving-v2-active.png"
 			},
 			{
 				"pagePath": "pages/profile/index",
-				"text": "我的"
+				"text": "我的",
+				"iconPath": "static/tab/tab-profile-v2.png",
+				"selectedIconPath": "static/tab/tab-profile-v2-active.png"
 			}
 		]
 	}
