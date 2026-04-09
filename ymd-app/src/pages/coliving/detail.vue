@@ -66,12 +66,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onShow } from '@dcloudio/uni-app';
 import { request } from '../../utils/request';
 import { TESTDATA_IMAGES } from '@/constants/testdataImages';
+import { useUserStore } from '@/store/user';
 
 const id = ref<string>('');
 const idText = computed(() => id.value || '--');
+const userStore = useUserStore();
 
 onLoad((query) => {
   id.value = (query?.id as string) || (query?.space_id as string) || '';
@@ -90,6 +92,16 @@ const form = reactive({
   message: '',
 });
 
+const syncDefaultForm = () => {
+  const nickname = String((userStore.userInfo as any)?.nickname || '').trim();
+  if (!form.contact_name && nickname) form.contact_name = nickname;
+
+  const phone = String((userStore.userInfo as any)?.phone || '').trim();
+  if (!form.contact_phone && phone) form.contact_phone = phone;
+};
+
+onShow(() => syncDefaultForm());
+
 const resetForm = () => {
   form.contact_name = '';
   form.contact_phone = '';
@@ -105,6 +117,7 @@ const closeInquiry = () => {
 
 const openInquiry = () => {
   submitError.value = '';
+  syncDefaultForm();
   inquiryVisible.value = true;
 };
 

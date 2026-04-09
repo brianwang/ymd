@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import and_, update, func
+from sqlalchemy import and_, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -13,6 +13,7 @@ from app.models.event_registration import EventRegistration
 from app.models.user import User
 from app.schemas.event import EventListItem, EventOut
 from app.schemas.event_registration import EventRegistrationCreate
+from app.utils.geo import sql_distance_km_expr, round_distance_km, validate_lat_lng
 
 
 router = APIRouter()
@@ -86,9 +87,30 @@ async def list_events(
     city: str | None = Query(None),
     start_from: datetime | None = Query(None),
     start_to: datetime | None = Query(None),
+    near_lat: float | None = Query(None),
+    near_lng: float | None = Query(None),
+    radius_km: float | None = Query(None, gt=0),
+    sort: str = Query("default", pattern="^(default|distance|start_time)$"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Event).where(Event.is_published.is_(True))
+    near_enabled = (near_lat is not None) or (near_lng is not None)
+    if near_enabled and (near_lat is None or near_lng is None):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="near_lat and near_lng must be provided together")
+    if radius_km is not None and not near_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="radius_km requires near_lat/near_lng")
+    if sort == "distance" and not near_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sort=distance requires near_lat/near_lng")
+    if near_enabled:
+        validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+
+    distance_expr = None
+    if near_enabled:
+        distance_expr = sql_distance_km_expr(lat_col=Event.lat, lng_col=Event.lng, near_lat=float(near_lat), near_lng=float(near_lng)).label(
+            "distance_km_raw"
+        )
+
+    stmt = select(Event, distance_expr) if near_enabled else select(Event)
+    stmt = stmt.where(Event.is_published.is_(True))
     if category:
         stmt = stmt.where(Event.category == category)
     if city:
@@ -97,9 +119,91 @@ async def list_events(
         stmt = stmt.where(Event.start_at >= start_from)
     if start_to:
         stmt = stmt.where(Event.start_at <= start_to)
-    stmt = stmt.order_by(Event.start_at.asc(), Event.id.asc()).limit(limit).offset(offset)
+
+    if radius_km is not None and distance_expr is not None:
+        stmt = stmt.where(
+            and_(
+                Event.lat.is_not(None),
+                Event.lng.is_not(None),
+                distance_expr <= float(radius_km),
+            )
+        )
+
+    if sort == "distance" and distance_expr is not None:
+        null_flag = or_(Event.lat.is_(None), Event.lng.is_(None))
+        stmt = stmt.order_by(null_flag.asc(), distance_expr.asc(), Event.start_at.asc(), Event.id.asc())
+    elif sort == "start_time":
+        stmt = stmt.order_by(Event.start_at.asc(), Event.id.asc())
+    else:
+        stmt = stmt.order_by(Event.start_at.asc(), Event.id.asc())
+
+    stmt = stmt.limit(limit).offset(offset)
     res = await db.execute(stmt)
-    return list(res.scalars().all())
+    if not near_enabled:
+        return list(res.scalars().all())
+
+    rows = res.all()
+    items: list[EventListItem] = []
+    for event, dist_raw in rows:
+        item = EventListItem.model_validate(event)
+        if dist_raw is not None and event.lat is not None and event.lng is not None:
+            item = item.model_copy(update={"distance_km": round_distance_km(float(dist_raw))})
+        items.append(item)
+    return items
+
+
+@router.get("/events/recommended", response_model=list[EventListItem], response_model_exclude_none=True)
+async def recommended_events(
+    limit: int = Query(6, ge=1, le=20),
+    near_lat: float | None = Query(None),
+    near_lng: float | None = Query(None),
+    radius_km: float | None = Query(None, gt=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    首页推荐：默认取“即将开始”的活动；若提供 near_lat/near_lng 则优先按距离排序。
+    """
+    now = datetime.now(timezone.utc)
+    near_enabled = (near_lat is not None) or (near_lng is not None)
+    if near_enabled and (near_lat is None or near_lng is None):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="near_lat and near_lng must be provided together")
+    if radius_km is not None and not near_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="radius_km requires near_lat/near_lng")
+    if near_enabled:
+        validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+
+    distance_expr = None
+    if near_enabled:
+        distance_expr = sql_distance_km_expr(lat_col=Event.lat, lng_col=Event.lng, near_lat=float(near_lat), near_lng=float(near_lng)).label(
+            "distance_km_raw"
+        )
+        stmt = select(Event, distance_expr)
+    else:
+        stmt = select(Event)
+
+    stmt = stmt.where(Event.is_published.is_(True)).where(Event.start_at >= now)
+
+    if radius_km is not None and distance_expr is not None:
+        stmt = stmt.where(and_(Event.lat.is_not(None), Event.lng.is_not(None), distance_expr <= float(radius_km)))
+
+    if near_enabled and distance_expr is not None:
+        null_flag = or_(Event.lat.is_(None), Event.lng.is_(None))
+        stmt = stmt.order_by(null_flag.asc(), distance_expr.asc(), Event.start_at.asc(), Event.id.asc())
+    else:
+        stmt = stmt.order_by(Event.start_at.asc(), Event.id.asc())
+
+    stmt = stmt.limit(limit)
+    res = await db.execute(stmt)
+    if not near_enabled:
+        return list(res.scalars().all())
+    rows = res.all()
+    items: list[EventListItem] = []
+    for event, dist_raw in rows:
+        item = EventListItem.model_validate(event)
+        if dist_raw is not None and event.lat is not None and event.lng is not None:
+            item = item.model_copy(update={"distance_km": round_distance_km(float(dist_raw))})
+        items.append(item)
+    return items
 
 
 @router.get("/events/{event_id}", response_model=EventDetailOut)

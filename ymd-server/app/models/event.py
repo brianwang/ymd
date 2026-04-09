@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Index, Float
 from sqlalchemy.sql import func
 from app.models.base import Base
 
@@ -11,6 +11,8 @@ class Event(Base):
     category = Column(String, nullable=False, index=True)
     city = Column(String, nullable=False, index=True)
     address = Column(String, nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
     cover_url = Column(String, nullable=True)
     summary = Column(Text, nullable=True)
     content = Column(Text, nullable=True)
@@ -27,4 +29,3 @@ class Event(Base):
     __table_args__ = (
         Index("ix_events_published_start_at", "is_published", "start_at"),
     )
-

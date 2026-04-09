@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, Index, JSON
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, Index, JSON, text, Float, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from app.models.base import Base
 
@@ -8,9 +9,17 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
+    # Optional location for proximity queries (no PostGIS): keep nullable for backward compatibility
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    city = Column(String, nullable=True)
     image_urls = Column(JSON, nullable=False, server_default="[]")
     # Rich media attachments. Each item: {"type": "image"|"video"|"audio", "url": "..."}
     media = Column(JSON, nullable=False, server_default="[]")
+    # Optional location: {"name": "...", "latitude": ..., "longitude": ...}
+    location = Column(JSONB, nullable=True)
+    # Tags list: ["露营", "共居"]
+    tags = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     like_count = Column(Integer, nullable=False, server_default="0")
     comment_count = Column(Integer, nullable=False, server_default="0")
     favorite_count = Column(Integer, nullable=False, server_default="0")

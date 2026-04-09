@@ -34,7 +34,9 @@ Write-Host "Starting dev stack..."
 Write-Host "API base: $apiBase"
 
 $ymdAppEnvLocal = Join-Path $root "ymd-app\.env.local"
-Set-Content -Path $ymdAppEnvLocal -Value "VITE_API_BASE_URL=$apiBase" -Encoding UTF8 -NoNewline
+$ymdAppEnvDevLocal = Join-Path $root "ymd-app\.env.development.local"
+Set-Content -Path $ymdAppEnvLocal -Value "VITE_API_BASE_URL=$apiBase" -Encoding utf8NoBOM -NoNewline
+Set-Content -Path $ymdAppEnvDevLocal -Value "VITE_API_BASE_URL=$apiBase" -Encoding utf8NoBOM -NoNewline
 
 try {
   python -c "import uvicorn" | Out-Null

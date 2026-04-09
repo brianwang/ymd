@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, delete
@@ -11,7 +11,15 @@ from app.models.event_registration import EventRegistration
 from app.models.user import User
 from app.models.user_follow import UserFollow
 from app.schemas.event import EventListItem
-from app.schemas.user import User as UserSchema, UserUpdate, UserProfileOut, UserPublic, FollowStateOut
+from app.schemas.user import (
+    User as UserSchema,
+    UserUpdate,
+    UserProfileOut,
+    UserPublic,
+    FollowStateOut,
+    PreferredLocation,
+    UserPreferredLocationUpdate,
+)
 from app.api.deps import get_current_active_user, get_current_user_optional
 import base64
 from io import BytesIO
@@ -28,6 +36,32 @@ class BindEmailRequest(BaseModel):
 @router.get("/me", response_model=UserSchema)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+
+@router.get("/me/location", response_model=PreferredLocation | None, response_model_exclude_none=True)
+async def get_my_preferred_location(current_user: User = Depends(get_current_active_user)):
+    return current_user.preferred_location
+
+
+@router.put("/me/location", response_model=PreferredLocation, response_model_exclude_none=True)
+async def put_my_preferred_location(
+    body: UserPreferredLocationUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Persist to dedicated columns for proximity queries/auditing
+    current_user.preferred_location_lat = body.lat
+    current_user.preferred_location_lng = body.lng
+    current_user.preferred_location_display_name = body.display_name
+    current_user.preferred_location_city = body.city
+    current_user.preferred_location_source = body.source
+    current_user.preferred_location_updated_at = datetime.now(timezone.utc)
+
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    # property guaranteed not None after update
+    return current_user.preferred_location
 
 @router.put("/me", response_model=UserSchema)
 async def update_user_me(

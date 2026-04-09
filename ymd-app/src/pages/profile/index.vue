@@ -2,14 +2,13 @@
   <view class="ymd-page">
     <AppBar title="我的" />
     <view class="ymd-container ymd-page-inner">
-      <Card class="profile">
+      <Card class="profile" pressable @click="goMyProfile">
         <view class="profile-main">
           <image class="avatar" :src="avatarSrc" mode="aspectFill" />
           <view class="info">
             <text class="nickname">{{ nicknameText }}</text>
             <text class="meta">{{ metaText }}</text>
           </view>
-          <button v-if="userStore.token" class="edit ymd-btn ghost" size="mini" @click="goEditProfile">编辑</button>
         </view>
         <view class="badges" v-if="userStore.token">
           <view class="badge">
@@ -47,6 +46,7 @@
       </Card>
 
       <view class="ymd-section">
+        <SectionHeader title="功能入口" />
         <Card class="menu">
           <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goMyEvents">
             <text class="menu-text">我的活动</text>
@@ -55,11 +55,6 @@
           <Divider inset />
           <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goMyOrders">
             <text class="menu-text">我的订单</text>
-            <text class="arrow">›</text>
-          </view>
-          <Divider inset />
-          <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goEditProfile">
-            <text class="menu-text">编辑个人资料</text>
             <text class="arrow">›</text>
           </view>
           <Divider inset v-if="userStore.token && !userStore.userInfo?.email" />
@@ -192,12 +187,24 @@ const goMyOrders = () => {
   uni.navigateTo({ url: '/pages/orders/index' });
 };
 
-const goEditProfile = () => {
+const goMyProfile = async () => {
   if (!userStore.token) {
     uni.showToast({ title: '请先登录', icon: 'none' });
     return;
   }
-  uni.navigateTo({ url: '/pages/profile/edit' });
+  let id = Number((userStore.userInfo as any)?.id);
+  if (!id) {
+    try {
+      const me: any = await request({ url: '/users/me', method: 'GET' });
+      userStore.setUserInfo(me);
+      id = Number(me?.id);
+    } catch {}
+  }
+  if (!id) {
+    uni.showToast({ title: '用户信息异常', icon: 'none' });
+    return;
+  }
+  uni.navigateTo({ url: `/pages/user/profile?id=${id}` });
 };
 
 const handlePoints = () => {
@@ -241,7 +248,6 @@ onShow(() => {
 .info { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .nickname { font-size: 18px; font-weight: 900; color: $ymd-v2-color-text; }
 .meta { font-size: 12px; color: $ymd-v2-color-muted; }
-.edit { height: 34px; line-height: 34px; padding: 0 14px; font-weight: 900; border-radius: $ymd-v2-radius-pill; }
 
 .badges { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
 .badge { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border-radius: $ymd-v2-radius-md; background: rgba(255,255,255,0.86); border: 1px solid rgba(15, 23, 42, 0.06); }

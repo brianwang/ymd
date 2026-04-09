@@ -1,5 +1,6 @@
 {
   "extends": "@vue/tsconfig/tsconfig.json",
+  "verbatimModuleSyntax": true,
   "compilerOptions": {
     "sourceMap": true,
     "baseUrl": ".",

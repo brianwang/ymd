@@ -1,9 +1,13 @@
 import { useUserStore } from '../store/user';
 
+const injectedBaseUrl = typeof __YMD_API_BASE_URL__ === 'string' ? __YMD_API_BASE_URL__ : '';
 const envBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL;
-const normalizedEnvBaseUrl =
-  typeof envBaseUrl === 'string' && envBaseUrl ? envBaseUrl.replace(/\/+$/, '') : '';
-export const BASE_URL = normalizedEnvBaseUrl || 'http://localhost:8000/api/v1';
+const normalizeBaseUrl = (v: unknown) =>
+  typeof v === 'string' && v ? v.replace(/\/+$/, '') : '';
+export const BASE_URL =
+  normalizeBaseUrl(injectedBaseUrl) ||
+  normalizeBaseUrl(envBaseUrl) ||
+  'http://localhost:8000/api/v1';
 
 let redirectingToLogin = false;
 

@@ -53,7 +53,8 @@
 			"path": "pages/user/profile",
 			"style": {
 				"navigationBarTitleText": "用户主页",
-				"enablePullDownRefresh": true
+				"enablePullDownRefresh": true,
+				"navigationStyle": "custom"
 			}
 		},
 		{
@@ -74,12 +75,6 @@
 			"style": {
 				"navigationBarTitleText": "我的",
 				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/profile/edit",
-			"style": {
-				"navigationBarTitleText": "编辑个人资料"
 			}
 		},
 		{

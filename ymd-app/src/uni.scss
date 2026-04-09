@@ -100,6 +100,9 @@ html, body {
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
+  // H5 下默认 box-sizing: content-box 会导致 width:100% + padding 产生横向溢出，
+  // 从而出现右侧内容被“裁掉/看不全”的问题。
+  box-sizing: border-box;
   padding-left: $ymd-v2-space-3;
   padding-right: $ymd-v2-space-3;
 }

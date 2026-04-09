@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_YMD_CUSTOMER_PHONE?: string;
 }
 
+declare const __YMD_API_BASE_URL__: string;
+
 declare module '*.vue' {
   import { DefineComponent } from 'vue'
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types

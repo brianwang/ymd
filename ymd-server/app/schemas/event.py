@@ -7,12 +7,15 @@ class EventListItem(BaseModel):
     title: str
     category: str
     city: str
+    lat: float | None = None
+    lng: float | None = None
     cover_url: str | None = None
     start_at: datetime
     end_at: datetime | None = None
     signup_deadline_at: datetime
     capacity: int | None = None
     registered_count: int
+    distance_km: float | None = None
 
     class Config:
         from_attributes = True
@@ -29,6 +32,8 @@ class EventAdminUpsert(BaseModel):
     category: str
     city: str
     address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
     cover_url: str | None = None
     summary: str | None = None
     content: str | None = None
@@ -41,4 +46,3 @@ class EventAdminUpsert(BaseModel):
 class EventAdminOut(EventOut):
     is_published: bool
     published_at: datetime | None = None
-

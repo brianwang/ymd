@@ -15,6 +15,12 @@ from app.schemas.post import PostCreate, PostOut, PostLikeToggleOut, PostFavorit
 from app.schemas.user import UserPublic
 from app.schemas.comment import CommentCreate, CommentOut
 from datetime import date
+from app.services.post_tags import (
+    TagRules,
+    extract_hashtags_from_content,
+    merge_explicit_and_parsed_tags,
+    validate_tags,
+)
 from app.services.points import (
     award_points,
     can_award_daily,
@@ -115,11 +121,24 @@ async def create_post(
 
     content = (post_in.content or "").strip()
     media_items, image_urls = _normalize_post_media(media=post_in.media, image_urls=post_in.image_urls)
+
+    # tags：显式 + 正文解析 #标签 -> 合并去重归一化，并做数量/长度/字符校验
+    parsed = extract_hashtags_from_content(content)
+    merged = merge_explicit_and_parsed_tags(explicit=post_in.tags, parsed=parsed)
+    try:
+        tags = validate_tags(merged, rules=TagRules())
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    location = post_in.location.model_dump() if post_in.location is not None else None
+
     post = Post(
         user_id=current_user.id,
         content=content,
         image_urls=image_urls,
         media=[m.model_dump() for m in media_items],
+        location=location,
+        tags=tags,
     )
     db.add(post)
     await db.flush()
