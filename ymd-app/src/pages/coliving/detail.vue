@@ -1,6 +1,6 @@
 <template>
   <view class="page ymd-page">
-    <image class="hero" src="/static/placeholder/cover-coliving-v2.png" mode="aspectFill" />
+    <image class="hero" :src="TESTDATA_IMAGES.coverColivingV2" mode="aspectFill" />
     <view class="card">
       <text class="title">空间详情</text>
       <text class="sub">空间 ID：{{ idText }}</text>
@@ -68,6 +68,7 @@
 import { computed, reactive, ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { request } from '../../utils/request';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const id = ref<string>('');
 const idText = computed(() => id.value || '--');

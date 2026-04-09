@@ -83,7 +83,7 @@
 
         <EmptyState
           v-else-if="status === 'error'"
-          image="/static/empty/empty-error-v2.png"
+          :image="TESTDATA_IMAGES.emptyErrorV2"
           title="加载失败"
           :desc="errorText || '请稍后再试'"
           action-text="重试"
@@ -91,7 +91,7 @@
         />
         <EmptyState
           v-else-if="filteredEvents.length === 0"
-          image="/static/empty/empty-list-v2.png"
+          :image="TESTDATA_IMAGES.emptyListV2"
           title="暂无活动"
           desc="换个筛选试试"
           action-text="重置筛选"
@@ -128,6 +128,7 @@ import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import Card from '@/components/ui/Card.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 type PageStatus = 'loading' | 'ready' | 'error';
 
@@ -151,9 +152,9 @@ type EventItem = {
 };
 
 const banners = ref<Banner[]>([
-  { id: 1, title: '游牧岛 · 城市活动季', sub: '共创 / 分享 / 同行', image: '/static/banner/banner-v2-1.png' },
-  { id: 2, title: '周末城市漫游', sub: '咖啡巡游 / 轻社交 / 结伴出发', image: '/static/banner/banner-v2-2.png' },
-  { id: 3, title: '共居体验日', sub: '看房 + 体验 + 组队入住', image: '/static/banner/banner-v2-3.png' },
+  { id: 1, title: '游牧岛 · 城市活动季', sub: '共创 / 分享 / 同行', image: TESTDATA_IMAGES.bannerV2_1 },
+  { id: 2, title: '周末城市漫游', sub: '咖啡巡游 / 轻社交 / 结伴出发', image: TESTDATA_IMAGES.bannerV2_2 },
+  { id: 3, title: '共居体验日', sub: '看房 + 体验 + 组队入住', image: TESTDATA_IMAGES.bannerV2_3 },
 ]);
 
 const categories = ['全部', '共创', '分享', '运动', '城市漫游'];
@@ -210,7 +211,7 @@ const reload = async () => {
       city: it.city,
       category: it.category,
       date: it.start_at,
-      cover: it.cover_url || '/static/placeholder/cover-events-v2.png',
+      cover: it.cover_url || TESTDATA_IMAGES.coverEventsV2,
       priceText: '免费',
       tags: [it.category],
     }));

@@ -32,6 +32,8 @@ class PostBase(BaseModel):
     media: List[MediaItem] = []
     like_count: int
     comment_count: int
+    favorite_count: int
+    share_count: int
     created_at: datetime
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
@@ -41,9 +43,17 @@ class PostBase(BaseModel):
 
 class PostOut(PostBase):
     liked_by_me: bool = False
+    favorited_by_me: bool = False
     author: Optional[UserPublic] = None
 
 class PostLikeToggleOut(BaseModel):
     liked: bool
     like_count: int
     comment_count: int
+
+class PostFavoriteToggleOut(BaseModel):
+    favorited: bool
+    favorite_count: int
+
+class PostShareOut(BaseModel):
+    share_count: int

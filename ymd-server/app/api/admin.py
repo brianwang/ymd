@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.post_like import PostLike
+from app.models.post_favorite import PostFavorite
 from app.models.points_ledger import PointsLedger
 from app.schemas.points import PointsLedgerItem
 from app.services.points import award_points
@@ -35,6 +36,8 @@ class AdminPostOut(BaseModel):
     content: str
     like_count: int
     comment_count: int
+    favorite_count: int
+    share_count: int
 
     class Config:
         from_attributes = True
@@ -224,6 +227,7 @@ async def delete_post(
         raise HTTPException(status_code=404, detail="Post not found")
     await db.execute(delete(Comment).where(Comment.post_id == post_id))
     await db.execute(delete(PostLike).where(PostLike.post_id == post_id))
+    await db.execute(delete(PostFavorite).where(PostFavorite.post_id == post_id))
     await db.execute(delete(Post).where(Post.id == post_id))
     await db.commit()
     return {"deleted": True, "post_id": post_id}

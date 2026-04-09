@@ -1,6 +1,9 @@
 import { useUserStore } from '../store/user';
 
-export const BASE_URL = 'http://localhost:8000/api/v1';
+const envBaseUrl = (import.meta as any)?.env?.VITE_API_BASE_URL;
+const normalizedEnvBaseUrl =
+  typeof envBaseUrl === 'string' && envBaseUrl ? envBaseUrl.replace(/\/+$/, '') : '';
+export const BASE_URL = normalizedEnvBaseUrl || 'http://localhost:8000/api/v1';
 
 let redirectingToLogin = false;
 

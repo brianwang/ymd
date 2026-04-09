@@ -42,6 +42,14 @@ async def update_user_me(
         current_user.nickname = nickname
     if user_in.avatar_url is not None:
         current_user.avatar_url = user_in.avatar_url
+    if user_in.phone is not None:
+        phone = user_in.phone.strip()
+        if phone == "":
+            current_user.phone = None
+        else:
+            if not phone.isdigit() or len(phone) != 11:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid phone")
+            current_user.phone = phone
     
     db.add(current_user)
     await db.commit()

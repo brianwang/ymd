@@ -1,6 +1,6 @@
 <template>
   <view class="page ymd-page">
-    <image class="hero" :src="event?.cover_url || '/static/placeholder/cover-events-v2.png'" mode="aspectFill" />
+    <image class="hero" :src="event?.cover_url || TESTDATA_IMAGES.coverEventsV2" mode="aspectFill" />
     <view class="card">
       <text class="title">{{ event?.title || '活动详情' }}</text>
       <text class="sub" v-if="event">{{ event.city }} · {{ dateText }}</text>
@@ -61,6 +61,7 @@ import { computed, ref } from 'vue';
 import { onLoad, onShow } from '@dcloudio/uni-app';
 import { request } from '@/utils/request';
 import { useUserStore } from '@/store/user';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const id = ref<string>('');
 
@@ -90,6 +91,8 @@ onShow(() => {
 const syncDefaultForm = () => {
   const n = String(userStore.userInfo?.nickname || '').trim();
   if (!formName.value && n) formName.value = n;
+  const p = String(userStore.userInfo?.phone || '').trim();
+  if (!formPhone.value && p) formPhone.value = p;
 };
 
 const fetchDetail = async () => {
@@ -225,6 +228,9 @@ const submitRegistration = async () => {
       data: { name, phone, remark: remark ? remark : undefined },
     });
     uni.showToast({ title: '报名成功', icon: 'success' });
+    if (userStore.userInfo) {
+      userStore.setUserInfo({ ...userStore.userInfo, phone });
+    }
     await fetchDetail();
   } catch (e: any) {
     uni.showToast({ title: e?.data?.detail || e?.message || '报名失败', icon: 'none' });

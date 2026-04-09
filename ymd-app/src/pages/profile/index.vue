@@ -47,7 +47,6 @@
       </Card>
 
       <view class="ymd-section">
-        <SectionHeader title="功能入口" />
         <Card class="menu">
           <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goMyEvents">
             <text class="menu-text">我的活动</text>
@@ -104,10 +103,11 @@ import AppBar from '@/components/ui/AppBar.vue';
 import Card from '@/components/ui/Card.vue';
 import Divider from '@/components/ui/Divider.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const userStore = useUserStore();
 
-const avatarSrc = computed(() => userStore.userInfo?.avatar_url || '/static/placeholder/avatar-v2.png');
+const avatarSrc = computed(() => userStore.userInfo?.avatar_url || TESTDATA_IMAGES.avatarV2);
 const nicknameText = computed(() => {
   if (!userStore.token) return '未登录';
   return userStore.userInfo?.nickname || '数字游民';

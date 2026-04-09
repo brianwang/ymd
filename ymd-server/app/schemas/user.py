@@ -5,6 +5,7 @@ class UserBase(BaseModel):
     nickname: Optional[str] = None
     avatar_url: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
 
 class UserCreate(UserBase):
     open_id: Optional[str] = None
@@ -19,6 +20,7 @@ class UserInDBBase(UserBase):
     is_active: bool
     points: int
     inviter_id: Optional[int] = None
+    phone: Optional[str] = None
 
     class Config:
         from_attributes = True

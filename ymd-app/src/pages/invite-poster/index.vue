@@ -7,7 +7,7 @@
       </Card>
       <Card class="preview" v-else>
         <view class="placeholder">
-          <image class="placeholder-bg" src="/static/placeholder/poster-bg-v2.png" mode="aspectFill" />
+          <image class="placeholder-bg" :src="TESTDATA_IMAGES.posterBgV2" mode="aspectFill" />
           <view class="placeholder-mask"></view>
           <text v-if="loading">生成中...</text>
           <text v-else>点击生成邀请海报</text>
@@ -36,6 +36,7 @@ import { request } from '../../utils/request';
 import { useUserStore } from '../../store/user';
 import AppBar from '@/components/ui/AppBar.vue';
 import Card from '@/components/ui/Card.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const userStore = useUserStore();
 const instance = getCurrentInstance();

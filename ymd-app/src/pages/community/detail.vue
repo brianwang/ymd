@@ -4,7 +4,7 @@
     <view class="ymd-container ymd-page-inner page">
       <Card v-if="post" class="post">
         <view class="post-head" @click="goUser(post.user_id)">
-          <image class="avatar" :src="post.author?.avatar_url || '/static/placeholder/avatar-v2.png'" mode="aspectFill" />
+          <image class="avatar" :src="post.author?.avatar_url || TESTDATA_IMAGES.avatarV2" mode="aspectFill" />
           <view class="head-main">
             <text class="name">{{ post.author?.nickname || `用户 #${post.user_id}` }}</text>
             <text class="time">{{ formatTime(post.created_at) }}</text>
@@ -23,27 +23,24 @@
           </view>
         </view>
         <view class="post-content">{{ post.content }}</view>
-        <view v-if="post.image_urls && post.image_urls.length" class="imgs">
-          <image
-            v-for="(url, idx) in post.image_urls"
-            :key="url + '-' + idx"
-            class="img"
-            :src="url"
-            mode="aspectFill"
-            @click.stop="preview(post.image_urls, idx)"
-          />
-        </view>
-        <view class="actions">
-          <button
-            class="like-btn ymd-btn ghost"
-            size="mini"
-            :loading="likeLoading"
-            :disabled="likeLoading"
-            @click="toggleLike"
-          >
-            {{ post.liked_by_me ? '已赞' : '点赞' }} {{ post.like_count }}
+        <PostMedia mode="detail" :media="post.media" :image-urls="post.image_urls" />
+        <view class="actions-bar">
+          <view class="action-item" :class="{ disabled: likeLoading }" @click.stop="toggleLike">
+            <text class="icon" :class="{ 'liked': post.liked_by_me }">{{ post.liked_by_me ? '♥' : '♡' }}</text>
+            <text class="count">{{ post.like_count || '点赞' }}</text>
+          </view>
+          <view class="action-item" :class="{ disabled: favLoading }" @click.stop="toggleFavorite">
+            <text class="icon" :class="{ 'favorited': post.favorited_by_me }">{{ post.favorited_by_me ? '★' : '☆' }}</text>
+            <text class="count">{{ post.favorite_count || '收藏' }}</text>
+          </view>
+          <view class="action-item" @click.stop="focusComment">
+            <text class="icon">💬</text>
+            <text class="count">{{ post.comment_count || '评论' }}</text>
+          </view>
+          <button class="action-item share-btn" open-type="share" @click.stop="trackShare" plain>
+            <text class="icon">↗</text>
+            <text class="count">{{ post.share_count || '转发' }}</text>
           </button>
-          <text class="meta">评论 {{ post.comment_count }}</text>
         </view>
       </Card>
       <Card v-else class="post sk">
@@ -65,7 +62,7 @@
         <SectionHeader title="评论"></SectionHeader>
         <EmptyState
           v-if="comments.length === 0 && !commentsLoading"
-          image="/static/empty/empty-list-v2.png"
+          :image="TESTDATA_IMAGES.emptyListV2"
           title="暂无评论"
           desc="说点什么，让讨论开始"
         ></EmptyState>
@@ -86,6 +83,8 @@
           class="input"
           placeholder="写下评论..."
           confirm-type="send"
+          :focus="isInputFocused"
+          @blur="isInputFocused = false"
           @confirm="submitComment"
         />
         <button
@@ -112,17 +111,23 @@ import Card from '@/components/ui/Card.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
+import PostMedia, { type PostMediaItem } from '@/components/community/PostMedia.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 type PostOut = {
   id: number;
   user_id: number;
   content: string;
   image_urls: string[];
+  media?: PostMediaItem[] | null;
   like_count: number;
   comment_count: number;
+  favorite_count: number;
+  share_count: number;
   created_at: string;
   updated_at?: string | null;
   liked_by_me: boolean;
+  favorited_by_me: boolean;
   author?: {
     id: number;
     nickname?: string | null;
@@ -149,7 +154,9 @@ const post = ref<PostOut | null>(null);
 const comments = ref<CommentOut[]>([]);
 const commentsLoading = ref(false);
 const likeLoading = ref(false);
+const favLoading = ref(false);
 const commentText = ref('');
+const isInputFocused = ref(false);
 const submittingComment = ref(false);
 const deleting = ref(false);
 const userStore = useUserStore();
@@ -254,6 +261,65 @@ const goUser = (userId: number) => {
   uni.navigateTo({ url: `/pages/user/profile?id=${userId}` });
 };
 
+const focusComment = () => {
+  isInputFocused.value = true;
+};
+
+const toggleFavorite = async () => {
+  if (!postId.value || !post.value) return;
+  if (!ensureLoggedIn()) return;
+  if (favLoading.value) return;
+  favLoading.value = true;
+  let prevState: { favorited: boolean; favorite_count: number } | null = null;
+  try {
+    const optimisticFav = !post.value.favorited_by_me;
+    prevState = {
+      favorited: post.value.favorited_by_me,
+      favorite_count: post.value.favorite_count,
+    };
+    post.value = {
+      ...post.value,
+      favorited_by_me: optimisticFav,
+      favorite_count: Math.max(0, post.value.favorite_count + (optimisticFav ? 1 : -1)),
+    };
+    const data = (await request({
+      url: `/posts/${postId.value}/favorite/toggle`,
+      method: 'POST',
+    })) as { favorited: boolean; favorite_count: number };
+    post.value = {
+      ...post.value,
+      favorited_by_me: data.favorited,
+      favorite_count: data.favorite_count,
+    };
+  } catch {
+    if (post.value && prevState) {
+      post.value = {
+        ...post.value,
+        favorited_by_me: prevState.favorited,
+        favorite_count: prevState.favorite_count,
+      };
+    }
+  } finally {
+    favLoading.value = false;
+  }
+};
+
+const trackShare = async () => {
+  if (!postId.value || !post.value) return;
+  try {
+    const data = (await request({
+      url: `/posts/${postId.value}/share`,
+      method: 'POST',
+    })) as { share_count: number };
+    post.value = {
+      ...post.value,
+      share_count: data.share_count,
+    };
+  } catch (e) {
+    // 忽略错误
+  }
+};
+
 const deletePost = async () => {
   if (!postId.value) return;
   if (!ensureLoggedIn()) return;
@@ -277,10 +343,6 @@ const deletePost = async () => {
       }
     },
   });
-};
-
-const preview = (urls: string[], current: number) => {
-  uni.previewImage({ urls, current });
 };
 
 onLoad(async (options) => {
@@ -341,21 +403,45 @@ onLoad(async (options) => {
   border-radius: $ymd-v2-radius-md;
   background: rgba(15, 23, 42, 0.04);
 }
-.actions {
+.actions-bar {
   margin-top: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  border-top: 1px solid rgba(15, 23, 42, 0.04);
+  padding-top: 10px;
 }
-.like-btn {
-  height: 34px;
-  line-height: 34px;
-  padding: 0 14px;
-  font-size: 12px;
-  font-weight: 800;
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: $ymd-v2-color-muted;
+  font-size: 13px;
+  padding: 4px 8px;
+  transition: all 0.2s;
 }
-.like-btn[disabled] {
-  opacity: 0.6;
+.action-item.disabled {
+  opacity: 0.5;
+}
+.action-item .icon {
+  font-size: 16px;
+  line-height: 16px;
+}
+.action-item .icon.liked {
+  color: $ymd-v2-color-accent-2;
+}
+.action-item .icon.favorited {
+  color: #f59e0b;
+}
+.share-btn {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  line-height: normal;
+  border: none !important;
+}
+.share-btn::after {
+  display: none;
 }
 .meta {
   font-size: 12px;

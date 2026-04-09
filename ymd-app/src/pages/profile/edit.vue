@@ -18,6 +18,17 @@
             placeholder-class="ph"
           />
         </view>
+        <view class="field">
+          <text class="label">手机号</text>
+          <input
+            class="input"
+            v-model="phone"
+            maxlength="11"
+            type="number"
+            placeholder="请输入手机号（11位）"
+            placeholder-class="ph"
+          />
+        </view>
         <view class="hint">
           <text class="hint-text">昵称将用于活动报名与社区展示</text>
         </view>
@@ -39,19 +50,22 @@ import { computed, ref } from 'vue';
 import { onLoad, onShow } from '@dcloudio/uni-app';
 import { BASE_URL, request } from '@/utils/request';
 import { useUserStore } from '@/store/user';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const userStore = useUserStore();
 
 const nickname = ref('');
+const phone = ref('');
 const avatarLocalPath = ref('');
 const avatarRemoteUrl = ref('');
 const saving = ref(false);
 const errorText = ref('');
 
-const avatarPreview = computed(() => avatarLocalPath.value || avatarRemoteUrl.value || '/static/logo.png');
+const avatarPreview = computed(() => avatarLocalPath.value || avatarRemoteUrl.value || TESTDATA_IMAGES.logo);
 
 const syncFromStore = () => {
   nickname.value = String(userStore.userInfo?.nickname || '');
+  phone.value = String(userStore.userInfo?.phone || '');
   avatarRemoteUrl.value = String(userStore.userInfo?.avatar_url || '');
 };
 
@@ -123,12 +137,25 @@ const validateNickname = (raw: string) => {
   return { ok: true, value: v, msg: '' };
 };
 
+const validatePhone = (raw: string) => {
+  const v = raw.trim();
+  if (!v) return { ok: true, value: '', msg: '' };
+  if (!/^\d{11}$/.test(v)) return { ok: false, value: v, msg: '手机号需为 11 位数字' };
+  return { ok: true, value: v, msg: '' };
+};
+
 const save = async () => {
   if (!ensureLogin()) return;
   const v = validateNickname(nickname.value);
   if (!v.ok) {
     errorText.value = v.msg;
     uni.showToast({ title: v.msg, icon: 'none' });
+    return;
+  }
+  const p = validatePhone(phone.value);
+  if (!p.ok) {
+    errorText.value = p.msg;
+    uni.showToast({ title: p.msg, icon: 'none' });
     return;
   }
   saving.value = true;
@@ -141,7 +168,7 @@ const save = async () => {
     const updated = await request({
       url: '/users/me',
       method: 'PUT',
-      data: { nickname: v.value, avatar_url: avatarUrl },
+      data: { nickname: v.value, avatar_url: avatarUrl, phone: p.value },
     });
     userStore.setUserInfo(updated);
     uni.showToast({ title: '保存成功', icon: 'success' });

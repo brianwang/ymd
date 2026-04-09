@@ -1,29 +1,39 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: ymd_postgres
+  api:
+    build:
+      context: ./ymd-server
+    container_name: ymd_api
     restart: always
     environment:
-      POSTGRES_USER: ymd_user
-      POSTGRES_PASSWORD: ymd_password
-      POSTGRES_DB: ymd_db
-    ports:
-      - "5433:5432"
+      POSTGRES_SERVER: ${POSTGRES_SERVER}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      SQL_ECHO: ${SQL_ECHO:-false}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/openapi.json').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
-  redis:
-    image: redis:7-alpine
-    container_name: ymd_redis
+  web:
+    build:
+      context: ./ymd-admin
+      args:
+        VITE_API_BASE_URL: /api/v1
+    container_name: ymd_web
     restart: always
     ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - "8044:80"
+    depends_on:
+      - api
 
 volumes:
-  postgres_data:
-  redis_data:
+  uploads:

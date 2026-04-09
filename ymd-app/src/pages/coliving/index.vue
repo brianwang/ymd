@@ -3,7 +3,7 @@
     <AppBar title="共居空间" action-text="全部城市" @action="city = '全部'" />
     <view class="ymd-container ymd-page-inner">
       <view class="hero" @click="city = '全部'">
-        <image class="hero-img" src="/static/banner/banner-v2-2.png" mode="aspectFill" />
+        <image class="hero-img" :src="TESTDATA_IMAGES.bannerV2_2" mode="aspectFill" />
         <view class="hero-mask"></view>
         <view class="hero-text">
           <text class="hero-title">找到你的下一段驻留</text>
@@ -72,7 +72,7 @@
 
         <EmptyState
           v-else-if="status === 'error'"
-          image="/static/empty/empty-error-v2.png"
+          :image="TESTDATA_IMAGES.emptyErrorV2"
           title="加载失败"
           :desc="errorText || '请稍后再试'"
           action-text="重试"
@@ -80,7 +80,7 @@
         />
         <EmptyState
           v-else-if="filteredSpaces.length === 0"
-          image="/static/empty/empty-list-v2.png"
+          :image="TESTDATA_IMAGES.emptyListV2"
           title="暂无空间"
           desc="换个城市看看"
           action-text="查看全部"
@@ -116,6 +116,7 @@ import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import Card from '@/components/ui/Card.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 type PageStatus = 'loading' | 'ready' | 'error';
 
@@ -144,11 +145,11 @@ const filteredSpaces = computed(() => {
 
 const seed = () => {
   allSpaces.value = [
-    { id: 201, name: '海边共居 · 日出工位', city: '厦门', cover: '/static/placeholder/cover-coliving-v2.png', priceText: '¥199/晚', distanceText: '地铁 5 分钟', tags: ['海边', '安静', '高速网络'] },
-    { id: 202, name: '城市共居 · 极简公寓', city: '上海', cover: '/static/placeholder/cover-coliving-v2.png', priceText: '¥259/晚', distanceText: '市中心', tags: ['通勤友好', '独立卫浴', '共享厨房'] },
-    { id: 203, name: '山间共居 · 轻度躺平', city: '成都', cover: '/static/placeholder/cover-coliving-v2.png', priceText: '¥169/晚', distanceText: '打车 15 分钟', tags: ['自然', '冥想', '宠物友好'] },
-    { id: 204, name: '湖畔共居 · 深度专注', city: '杭州', cover: '/static/placeholder/cover-coliving-v2.png', priceText: '¥189/晚', distanceText: '公交 10 分钟', tags: ['专注', '会议室', '咖啡吧'] },
-    { id: 205, name: '热带共居 · 运动社群', city: '深圳', cover: '/static/placeholder/cover-coliving-v2.png', priceText: '¥229/晚', distanceText: '公园旁', tags: ['健身', '社群', '夜跑'] },
+    { id: 201, name: '海边共居 · 日出工位', city: '厦门', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥199/晚', distanceText: '地铁 5 分钟', tags: ['海边', '安静', '高速网络'] },
+    { id: 202, name: '城市共居 · 极简公寓', city: '上海', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥259/晚', distanceText: '市中心', tags: ['通勤友好', '独立卫浴', '共享厨房'] },
+    { id: 203, name: '山间共居 · 轻度躺平', city: '成都', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥169/晚', distanceText: '打车 15 分钟', tags: ['自然', '冥想', '宠物友好'] },
+    { id: 204, name: '湖畔共居 · 深度专注', city: '杭州', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥189/晚', distanceText: '公交 10 分钟', tags: ['专注', '会议室', '咖啡吧'] },
+    { id: 205, name: '热带共居 · 运动社群', city: '深圳', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥229/晚', distanceText: '公园旁', tags: ['健身', '社群', '夜跑'] },
   ];
 };
 

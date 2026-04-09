@@ -4,7 +4,7 @@
     <view class="ymd-container ymd-page-inner page">
       <EmptyState
         v-if="errorText"
-        image="/static/empty/empty-error-v2.png"
+        :image="TESTDATA_IMAGES.emptyErrorV2"
         title="加载失败"
         :desc="errorText"
         action-text="重试"
@@ -12,12 +12,12 @@
       />
       <EmptyState
         v-else-if="loading"
-        image="/static/empty/empty-list-v2.png"
+        :image="TESTDATA_IMAGES.emptyListV2"
         title="加载中..."
       />
       <EmptyState
         v-else-if="items.length === 0"
-        image="/static/empty/empty-list-v2.png"
+        :image="TESTDATA_IMAGES.emptyListV2"
         title="暂无报名记录"
         desc="去看看有哪些活动正在发生"
         action-text="去看看活动"
@@ -32,7 +32,7 @@
           pressable
           @click="goDetail(it.event.id)"
         >
-          <image class="cover" :src="it.event.cover_url || '/static/placeholder/cover-events-v2.png'" mode="aspectFill" />
+          <image class="cover" :src="it.event.cover_url || TESTDATA_IMAGES.coverEventsV2" mode="aspectFill" />
           <view class="body">
             <text class="it-title">{{ it.event.title }}</text>
             <text class="it-sub">{{ (it.event.city || '未知城市') + ' · ' + formatTime(it.event.start_at) }}</text>
@@ -64,6 +64,7 @@ import { useUserStore } from '@/store/user';
 import AppBar from '@/components/ui/AppBar.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Card from '@/components/ui/Card.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const userStore = useUserStore();
 

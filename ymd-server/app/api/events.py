@@ -165,6 +165,10 @@ async def register_event(
             .where(EventRegistration.id == existing.id)
             .values(name=name, phone=phone, remark=remark)
         )
+        if current_user.phone != phone:
+            current_user.phone = phone
+            db.add(current_user)
+        await db.commit()
         return RegisterResult(
             registration_id=existing.id,
             status="registered",
@@ -221,6 +225,10 @@ async def register_event(
         db.add(reg)
         await db.flush()
         registration_id = int(reg.id)
+
+    if current_user.phone != phone:
+        current_user.phone = phone
+        db.add(current_user)
 
     await db.commit()
 

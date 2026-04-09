@@ -1,66 +1,87 @@
 <template>
-  <view class="page ymd-page">
-    <view class="card" v-if="profile">
-      <view class="profile-row">
-        <image v-if="profile.avatar_url" class="avatar" :src="profile.avatar_url" mode="aspectFill" />
-        <view class="info">
-          <text class="name">{{ profile.nickname || `用户 #${profile.id}` }}</text>
-          <text class="sub">ID: {{ profile.id }}</text>
+  <view class="ymd-page">
+    <AppBar title="用户详情" back />
+    <view class="ymd-container ymd-page-inner">
+      <Card v-if="pageStatus === 'loading' && !profile" class="profile sk">
+        <view class="profile-row">
+          <Skeleton width="44px" height="44px" border-radius="22px" />
+          <view class="info">
+            <Skeleton width="140px" height="14px" />
+            <Skeleton width="90px" height="12px" />
+          </view>
+          <Skeleton width="84px" height="34px" border-radius="999px" />
         </view>
-        <view class="actions" v-if="!isMe">
-          <button
-            class="follow-btn ymd-btn"
-            size="mini"
-            :loading="followLoading"
-            :disabled="followLoading"
-            @click="toggleFollow"
-          >
-            {{ profile.viewer_is_following ? '已关注' : '关注' }}
-          </button>
+      </Card>
+
+      <Card v-else-if="profile" class="profile">
+        <view class="profile-row">
+          <image class="avatar" :src="profile.avatar_url || TESTDATA_IMAGES.avatarV2" mode="aspectFill" />
+          <view class="info">
+            <text class="name">{{ profile.nickname || `用户 #${profile.id}` }}</text>
+            <text class="sub">ID: {{ profile.id }}</text>
+          </view>
+          <view v-if="!isMe" class="actions">
+            <button
+              class="follow-btn ymd-btn"
+              :class="{ ghost: profile.viewer_is_following }"
+              size="mini"
+              :loading="followLoading"
+              :disabled="followLoading"
+              @click="toggleFollow"
+            >
+              {{ profile.viewer_is_following ? '已关注' : '关注' }}
+            </button>
+          </view>
         </view>
+      </Card>
+
+      <EmptyState
+        v-if="pageStatus === 'error'"
+        :image="TESTDATA_IMAGES.emptyErrorV2"
+        title="网络开小差了"
+        :desc="errorText || '请稍后重试'"
+        action-text="重试"
+        @action="reload"
+      />
+
+      <view v-else class="ymd-section">
+        <SectionHeader title="Ta 的动态" />
+
+        <view v-if="pageStatus === 'loading' && posts.length === 0" class="sk-list">
+          <Card class="post sk">
+            <Skeleton height="14px" />
+            <Skeleton height="14px" width="70%" />
+            <Skeleton height="110px" border-radius="14px" />
+          </Card>
+          <Card class="post sk">
+            <Skeleton height="14px" />
+            <Skeleton height="14px" width="78%" />
+          </Card>
+        </view>
+
+        <EmptyState
+          v-else-if="pageStatus === 'ready' && posts.length === 0"
+          :image="TESTDATA_IMAGES.emptyListV2"
+          title="还没有内容"
+          desc="Ta 还没有发布动态"
+        />
+
+        <view v-else class="list">
+          <Card v-for="item in posts" :key="item.id" class="post" pressable @click="goDetail(item.id)">
+            <view class="post-content">{{ item.content }}</view>
+            <PostMedia mode="feed" :media="item.media" :image-urls="item.image_urls" />
+            <view class="meta">
+              <text class="meta-item">{{ formatTime(item.created_at) }}</text>
+              <text class="meta-item">赞 {{ item.like_count }}</text>
+              <text class="meta-item">评 {{ item.comment_count }}</text>
+            </view>
+          </Card>
+        </view>
+
+        <view v-if="loading && posts.length" class="loading">加载中...</view>
+        <view v-else-if="finished && posts.length" class="loading">没有更多了</view>
       </view>
     </view>
-
-    <view v-if="status === 'loading' && posts.length === 0" class="state">
-      <image class="state-illus" src="/static/empty/empty-list-v2.png" mode="widthFix" />
-      <text class="state-title">加载中...</text>
-    </view>
-    <view v-else-if="status === 'error'" class="state">
-      <image class="state-illus" src="/static/empty/empty-error-v2.png" mode="widthFix" />
-      <text class="state-title">网络开小差了</text>
-      <text class="state-sub">{{ errorText || '请稍后重试' }}</text>
-      <view class="state-actions">
-        <button class="state-btn ymd-btn" size="mini" @click="reload">重试</button>
-      </view>
-    </view>
-    <view v-else-if="posts.length === 0" class="state">
-      <image class="state-illus" src="/static/empty/empty-list-v2.png" mode="widthFix" />
-      <text class="state-title">还没有内容</text>
-      <text class="state-sub">Ta 还没有发布动态</text>
-    </view>
-
-    <view class="list">
-      <view v-for="item in posts" :key="item.id" class="post" @click="goDetail(item.id)">
-        <view class="post-content">{{ item.content }}</view>
-        <view v-if="item.image_urls && item.image_urls.length" class="imgs">
-          <image
-            v-for="(url, idx) in item.image_urls"
-            :key="url + '-' + idx"
-            class="img"
-            :src="url"
-            mode="aspectFill"
-          />
-        </view>
-        <view class="meta">
-          <text class="meta-item">{{ formatTime(item.created_at) }}</text>
-          <text class="meta-item">赞 {{ item.like_count }}</text>
-          <text class="meta-item">评 {{ item.comment_count }}</text>
-        </view>
-      </view>
-    </view>
-
-    <view v-if="loading && posts.length" class="loading">加载中...</view>
-    <view v-else-if="finished && posts.length" class="loading">没有更多了</view>
   </view>
 </template>
 
@@ -69,6 +90,13 @@ import { computed, ref } from 'vue';
 import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { ensureLoggedIn, request } from '@/utils/request';
 import { useUserStore } from '@/store/user';
+import AppBar from '@/components/ui/AppBar.vue';
+import Card from '@/components/ui/Card.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import Skeleton from '@/components/ui/Skeleton.vue';
+import PostMedia, { type PostMediaItem } from '@/components/community/PostMedia.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 type UserProfileOut = {
   id: number;
@@ -82,6 +110,7 @@ type PostOut = {
   user_id: number;
   content: string;
   image_urls: string[];
+  media?: PostMediaItem[] | null;
   like_count: number;
   comment_count: number;
   created_at: string;
@@ -99,7 +128,7 @@ const limit = 20;
 const offset = ref(0);
 const loading = ref(false);
 const finished = ref(false);
-const status = ref<'loading' | 'ready' | 'error'>('loading');
+const pageStatus = ref<'loading' | 'ready' | 'error'>('loading');
 const errorText = ref('');
 
 const isMe = computed(() => {
@@ -125,7 +154,6 @@ const fetchPosts = async (reset = false) => {
   if (loading.value) return;
   if (finished.value && !reset) return;
   loading.value = true;
-  if (reset) status.value = 'loading';
   try {
     const nextOffset = reset ? 0 : offset.value;
     const data = (await request({
@@ -135,11 +163,8 @@ const fetchPosts = async (reset = false) => {
     posts.value = reset ? data : posts.value.concat(data);
     offset.value = nextOffset + data.length;
     finished.value = data.length < limit;
-    status.value = 'ready';
-    errorText.value = '';
   } catch (e: any) {
-    status.value = 'error';
-    errorText.value = e?.message || '加载失败';
+    throw e;
   } finally {
     loading.value = false;
   }
@@ -148,8 +173,15 @@ const fetchPosts = async (reset = false) => {
 const reload = async () => {
   finished.value = false;
   offset.value = 0;
-  await loadProfile();
-  await fetchPosts(true);
+  pageStatus.value = 'loading';
+  errorText.value = '';
+  try {
+    await Promise.all([loadProfile(), fetchPosts(true)]);
+    pageStatus.value = 'ready';
+  } catch (e: any) {
+    pageStatus.value = 'error';
+    errorText.value = e?.message || '加载失败';
+  }
 };
 
 const toggleFollow = async () => {
@@ -169,6 +201,7 @@ const toggleFollow = async () => {
     profile.value = { ...profile.value, viewer_is_following: data.viewer_is_following };
   } catch {
     profile.value = { ...profile.value, viewer_is_following: prev };
+    uni.showToast({ title: '操作失败，请重试', icon: 'none' });
   } finally {
     followLoading.value = false;
   }
@@ -199,26 +232,20 @@ onReachBottom(() => {
 </script>
 
 <style lang="scss">
-.page { padding: $ymd-space-3; }
-.card { background: $ymd-color-card; border: 1px solid $ymd-color-line; border-radius: $ymd-radius-lg; padding: 14px; box-shadow: $ymd-shadow-xs; }
+.profile { padding: 14px; }
 .profile-row { display: flex; align-items: center; gap: 12px; }
 .avatar { width: 44px; height: 44px; border-radius: 22px; background: rgba(15, 23, 42, 0.04); }
-.info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.name { font-size: 15px; font-weight: 900; color: $ymd-color-text; }
-.sub { font-size: 12px; color: $ymd-color-muted; }
-.follow-btn { height: 34px; line-height: 34px; padding: 0 14px; font-size: 12px; }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.name { font-size: 15px; font-weight: 900; color: $ymd-v2-color-text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { font-size: 12px; color: $ymd-v2-color-muted; }
+.follow-btn { height: 34px; line-height: 34px; padding: 0 14px; font-size: 12px; font-weight: 800; }
 
-.list { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
-.post { background: $ymd-color-card; border-radius: $ymd-radius-lg; padding: 14px; border: 1px solid $ymd-color-line; box-shadow: $ymd-shadow-xs; }
-.post-content { font-size: 15px; line-height: 22px; color: $ymd-color-text; white-space: pre-wrap; word-break: break-all; }
-.imgs { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-.img { width: 104px; height: 104px; border-radius: $ymd-radius-md; background: rgba(15, 23, 42, 0.04); }
-.meta { margin-top: 12px; display: flex; align-items: center; gap: 10px; color: $ymd-color-muted; font-size: 12px; }
-.loading { padding: 14px 0 28px; text-align: center; color: $ymd-color-muted; font-size: 12px; }
-.state { margin-top: 12px; background: $ymd-color-card; border: 1px solid $ymd-color-line; border-radius: $ymd-radius-lg; padding: 18px; display: flex; flex-direction: column; gap: 8px; align-items: center; box-shadow: $ymd-shadow-xs; }
-.state-illus { width: 180px; }
-.state-title { font-size: $ymd-font-md; font-weight: 800; color: $ymd-color-text; }
-.state-sub { font-size: $ymd-font-sm; color: $ymd-color-muted; text-align: center; }
-.state-actions { margin-top: 4px; }
-.state-btn { padding: 0 14px; height: 34px; line-height: 34px; font-size: 12px; }
+.sk { padding: 14px; }
+.sk-list { display: flex; flex-direction: column; gap: 12px; }
+
+.list { display: flex; flex-direction: column; gap: 12px; }
+.post { padding: 14px; }
+.post-content { font-size: 15px; line-height: 22px; color: $ymd-v2-color-text; white-space: pre-wrap; word-break: break-all; }
+.meta { margin-top: 12px; display: flex; align-items: center; gap: 10px; color: $ymd-v2-color-muted; font-size: 12px; }
+.loading { padding: 14px 0 28px; text-align: center; color: $ymd-v2-color-muted; font-size: 12px; }
 </style>

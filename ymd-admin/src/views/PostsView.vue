@@ -30,6 +30,8 @@
           <th style="width: 90px;">用户</th>
           <th>内容</th>
           <th style="width: 90px;">点赞</th>
+          <th style="width: 90px;">收藏</th>
+          <th style="width: 90px;">转发</th>
           <th style="width: 90px;">评论</th>
           <th style="width: 140px;">操作</th>
         </tr>
@@ -42,6 +44,8 @@
             <div class="content">{{ p.content }}</div>
           </td>
           <td>{{ p.like_count }}</td>
+          <td>{{ p.favorite_count }}</td>
+          <td>{{ p.share_count }}</td>
           <td>{{ p.comment_count }}</td>
           <td>
             <button class="btn danger" :disabled="loadingRowId === p.id" @click="remove(p)">删除</button>
@@ -62,6 +66,8 @@ type AdminPost = {
   user_id: number;
   content: string;
   like_count: number;
+  favorite_count: number;
+  share_count: number;
   comment_count: number;
 };
 

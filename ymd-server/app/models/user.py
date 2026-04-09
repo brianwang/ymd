@@ -10,6 +10,7 @@ class User(Base):
     union_id = Column(String, unique=True, index=True, nullable=True)
     open_id = Column(String, unique=True, index=True, nullable=True)
     email = Column(String, unique=True, index=True, nullable=True)
+    phone = Column(String, index=True, nullable=True)
     hashed_password = Column(String, nullable=True)
     nickname = Column(String, index=True, nullable=True)
     avatar_url = Column(String, nullable=True)

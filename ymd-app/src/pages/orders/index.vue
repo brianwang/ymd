@@ -2,7 +2,7 @@
   <view class="page ymd-page">
     <view class="card">
       <view class="empty">
-        <image class="empty-img" src="/static/empty/empty-list-v2.png" mode="aspectFit" />
+        <image class="empty-img" :src="TESTDATA_IMAGES.emptyListV2" mode="aspectFit" />
         <text class="empty-title">暂无订单</text>
         <text class="empty-sub">订单体系正在完善中，先去看看活动和共居吧</text>
       </view>
@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/user';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 const userStore = useUserStore();
 

@@ -125,14 +125,14 @@
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "游牧岛",
-		"navigationBarBackgroundColor": "#F6FBFC",
-		"backgroundColor": "#F6FBFC"
+		"navigationBarBackgroundColor": "#F7FAFB",
+		"backgroundColor": "#F7FAFB"
 	},
 	"tabBar": {
 		"color": "#64748B",
 		"selectedColor": "#12C8C0",
 		"borderStyle": "white",
-		"backgroundColor": "#ffffff",
+		"backgroundColor": "#F7FAFB",
 		"fontSize": "11px",
 		"list": [
 			{

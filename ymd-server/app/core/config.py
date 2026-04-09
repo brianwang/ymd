@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     COMMENT_REWARD_POINTS: int = 2
     DAILY_POST_REWARD_LIMIT: int = 5
     DAILY_COMMENT_REWARD_LIMIT: int = 10
+    SQL_ECHO: bool = False
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

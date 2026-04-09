@@ -21,9 +21,11 @@
               <text class="task-title">每日签到</text>
               <text class="task-sub">+{{ taskSignInDelta }} 积分</text>
             </view>
-            <button class="task-btn ymd-btn" size="mini" :disabled="loading || taskSignInAwarded" @click="signIn">
-              {{ taskSignInAwarded ? '已完成' : '去签到' }}
-            </button>
+            <view class="task-action">
+              <button class="task-btn ymd-btn" size="mini" :disabled="loading || taskSignInAwarded" @click="signIn">
+                {{ taskSignInAwarded ? '已完成' : '去签到' }}
+              </button>
+            </view>
           </view>
           <Divider inset />
           <view class="task-row">
@@ -31,9 +33,16 @@
               <text class="task-title">发布首帖</text>
               <text class="task-sub">+{{ taskFirstPostDelta }} 积分</text>
             </view>
-            <button class="task-btn ymd-btn ghost" size="mini" :disabled="loading || taskFirstPostAwarded" @click="firstPost">
-              {{ taskFirstPostAwarded ? '已完成' : '领取奖励' }}
-            </button>
+            <view class="task-action">
+              <button
+                class="task-btn ymd-btn ghost"
+                size="mini"
+                :disabled="loading || taskFirstPostAwarded"
+                @click="firstPost"
+              >
+                {{ taskFirstPostAwarded ? '已完成' : '领取奖励' }}
+              </button>
+            </view>
           </view>
           <Divider inset />
           <view class="task-row">
@@ -41,7 +50,9 @@
               <text class="task-title">邀请好友</text>
               <text class="task-sub">生成邀请海报分享给好友</text>
             </view>
-            <button class="task-btn ymd-btn ghost" size="mini" :disabled="loading" @click="goInvitePoster">去邀请</button>
+            <view class="task-action">
+              <button class="task-btn ymd-btn ghost" size="mini" :disabled="loading" @click="goInvitePoster">去邀请</button>
+            </view>
           </view>
         </Card>
       </view>
@@ -51,7 +62,7 @@
         <Card class="list">
           <EmptyState
             v-if="!loading && ledger.length === 0"
-            image="/static/empty/empty-list-v2.png"
+            :image="TESTDATA_IMAGES.emptyListV2"
             title="暂无流水"
             desc="完成任务后会在这里看到记录"
           />
@@ -87,6 +98,7 @@ import Card from '@/components/ui/Card.vue';
 import Divider from '@/components/ui/Divider.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import { TESTDATA_IMAGES } from '@/constants/testdataImages';
 
 type LedgerItem = {
   id: number;
@@ -229,26 +241,44 @@ onReachBottom(() => {
 
 <style scoped lang="scss">
 .balance-card { padding: 18px; box-shadow: $ymd-v2-shadow-sm; background: linear-gradient(180deg, rgba(109, 94, 252, 0.10), rgba(255,255,255, 0.92)); }
-.balance-top { display: flex; justify-content: space-between; align-items: center; }
+.balance-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .balance-label { font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; font-weight: 800; }
-.nickname { font-size: $ymd-v2-font-md; color: $ymd-v2-color-text; font-weight: 900; }
+.nickname {
+  font-size: $ymd-v2-font-md;
+  color: $ymd-v2-color-text;
+  font-weight: 900;
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .balance { margin-top: 14px; display: flex; align-items: baseline; }
 .balance-num { font-size: 46px; font-weight: 950; color: $ymd-v2-color-text; line-height: 1; }
 .balance-unit { margin-left: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
 
 .task-card { overflow: hidden; }
 .task-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px; }
-.task-left { display: flex; flex-direction: column; }
+.task-left { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .task-title { font-size: 15px; color: $ymd-v2-color-text; font-weight: 900; }
-.task-sub { margin-top: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
-.task-btn { font-size: 12px; padding: 0 14px; height: 34px; line-height: 34px; }
+.task-sub {
+  margin-top: 6px;
+  font-size: $ymd-v2-font-sm;
+  color: $ymd-v2-color-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-action { flex: 0 0 96px; width: 96px; display: flex; align-items: center; justify-content: flex-end; }
+.task-btn { width: 100%; font-size: 12px; padding: 0; height: 34px; line-height: 34px; display: flex; align-items: center; justify-content: center; }
 .list { overflow: hidden; padding: 14px; }
-.item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid $ymd-v2-color-line; }
+.item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid $ymd-v2-color-line; }
 .item:last-child { border-bottom: none; }
-.left { display: flex; flex-direction: column; }
-.event { font-size: 15px; color: $ymd-v2-color-text; font-weight: 900; }
-.time { margin-top: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; }
-.delta { font-size: 16px; font-weight: 600; }
+.left { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.event { font-size: 15px; color: $ymd-v2-color-text; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.time { margin-top: 6px; font-size: $ymd-v2-font-sm; color: $ymd-v2-color-muted; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delta { flex: 0 0 72px; min-width: 72px; text-align: right; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
 .plus { color: $ymd-v2-color-success; font-weight: 900; }
 .minus { color: $ymd-v2-color-danger; font-weight: 900; }
 .footer { padding: 12px 0 0; text-align: center; color: $ymd-v2-color-muted; font-size: 12px; }

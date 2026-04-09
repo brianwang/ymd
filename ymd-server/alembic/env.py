@@ -14,10 +14,12 @@ from app.models.points_ledger import PointsLedger
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.post_like import PostLike
+from app.models.post_favorite import PostFavorite
 from app.models.ops_config import OpsConfig
 from app.models.event import Event
 from app.models.event_registration import EventRegistration
 from app.models.inquiry import Inquiry
+from app.models.user_follow import UserFollow
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

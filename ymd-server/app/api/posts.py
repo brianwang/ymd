@@ -10,7 +10,8 @@ from app.models.user import User
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.post_like import PostLike
-from app.schemas.post import PostCreate, PostOut, PostLikeToggleOut, MediaItem
+from app.models.post_favorite import PostFavorite
+from app.schemas.post import PostCreate, PostOut, PostLikeToggleOut, PostFavoriteToggleOut, PostShareOut, MediaItem
 from app.schemas.user import UserPublic
 from app.schemas.comment import CommentCreate, CommentOut
 from datetime import date
@@ -44,11 +45,12 @@ def _normalize_post_media(*, media: list | None, image_urls: list[str] | None) -
         normalized_image_urls = list(image_urls)
     return (media_items, normalized_image_urls)
 
-def _to_post_out(*, post: Post, author: UserPublic, liked_by_me: bool) -> PostOut:
+def _to_post_out(*, post: Post, author: UserPublic, liked_by_me: bool, favorited_by_me: bool) -> PostOut:
     media_items, image_urls = _normalize_post_media(media=getattr(post, "media", None), image_urls=getattr(post, "image_urls", None))
     return PostOut.model_validate(post).model_copy(
         update={
             "liked_by_me": liked_by_me,
+            "favorited_by_me": favorited_by_me,
             "author": author,
             "media": media_items,
             "image_urls": image_urls,
@@ -82,13 +84,14 @@ async def list_posts(
         rows = result.all()
         items: List[PostOut] = []
         for post, author in rows:
-            items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=False))
+            items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=False, favorited_by_me=False))
         return items
 
     stmt = (
-        select(Post, User, PostLike.id)
+        select(Post, User, PostLike.id, PostFavorite.id)
         .join(User, User.id == Post.user_id)
         .outerjoin(PostLike, and_(PostLike.post_id == Post.id, PostLike.user_id == current_user.id))
+        .outerjoin(PostFavorite, and_(PostFavorite.post_id == Post.id, PostFavorite.user_id == current_user.id))
         .where(and_(*conditions))
         .order_by(Post.created_at.desc())
         .limit(limit)
@@ -97,8 +100,8 @@ async def list_posts(
     result = await db.execute(stmt)
     rows = result.all()
     items: List[PostOut] = []
-    for post, author, like_id in rows:
-        items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=like_id is not None))
+    for post, author, like_id, fav_id in rows:
+        items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=like_id is not None, favorited_by_me=fav_id is not None))
     return items
 
 @router.post("/posts", response_model=PostOut, status_code=status.HTTP_201_CREATED)
@@ -137,7 +140,7 @@ async def create_post(
         )
     await db.commit()
     await db.refresh(post)
-    return _to_post_out(post=post, author=UserPublic.model_validate(current_user), liked_by_me=False)
+    return _to_post_out(post=post, author=UserPublic.model_validate(current_user), liked_by_me=False, favorited_by_me=False)
 
 @router.get("/posts/{post_id}", response_model=PostOut)
 async def get_post(
@@ -153,20 +156,21 @@ async def get_post(
         if not row:
             raise HTTPException(status_code=404, detail="Post not found")
         post, author = row
-        return _to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=False)
+        return _to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=False, favorited_by_me=False)
 
     stmt = (
-        select(Post, User, PostLike.id)
+        select(Post, User, PostLike.id, PostFavorite.id)
         .join(User, User.id == Post.user_id)
         .outerjoin(PostLike, and_(PostLike.post_id == Post.id, PostLike.user_id == current_user.id))
+        .outerjoin(PostFavorite, and_(PostFavorite.post_id == Post.id, PostFavorite.user_id == current_user.id))
         .where(base_conditions)
     )
     result = await db.execute(stmt)
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Post not found")
-    post, author, like_id = row
-    return _to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=like_id is not None)
+    post, author, like_id, fav_id = row
+    return _to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=like_id is not None, favorited_by_me=fav_id is not None)
 
 
 @router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -382,3 +386,68 @@ async def create_comment(
     await db.commit()
     await db.refresh(comment)
     return comment
+
+@router.post("/posts/{post_id}/favorite/toggle", response_model=PostFavoriteToggleOut)
+async def toggle_favorite(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    insert_stmt = (
+        pg_insert(PostFavorite)
+        .values(user_id=current_user.id, post_id=post_id)
+        .on_conflict_do_nothing(index_elements=["user_id", "post_id"])
+        .returning(PostFavorite.id)
+    )
+    inserted = await db.execute(insert_stmt)
+    inserted_id = inserted.scalar_one_or_none()
+    if inserted_id is not None:
+        upd = (
+            update(Post)
+            .where(and_(Post.id == post_id, Post.deleted_at.is_(None)))
+            .values(favorite_count=Post.favorite_count + 1)
+            .returning(Post.favorite_count)
+        )
+        res = await db.execute(upd)
+        row = res.first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Post not found")
+        favorite_count = row[0]
+        await db.commit()
+        return {"favorited": True, "favorite_count": favorite_count}
+
+    del_stmt = delete(PostFavorite).where(and_(PostFavorite.user_id == current_user.id, PostFavorite.post_id == post_id))
+    await db.execute(del_stmt)
+    upd = (
+        update(Post)
+        .where(and_(Post.id == post_id, Post.deleted_at.is_(None)))
+        .values(favorite_count=func.greatest(Post.favorite_count - 1, 0))
+        .returning(Post.favorite_count)
+    )
+    res = await db.execute(upd)
+    row = res.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Post not found")
+    favorite_count = row[0]
+    await db.commit()
+    return {"favorited": False, "favorite_count": favorite_count}
+
+@router.post("/posts/{post_id}/share", response_model=PostShareOut)
+async def share_post(
+    post_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    upd = (
+        update(Post)
+        .where(and_(Post.id == post_id, Post.deleted_at.is_(None)))
+        .values(share_count=Post.share_count + 1)
+        .returning(Post.share_count)
+    )
+    res = await db.execute(upd)
+    row = res.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Post not found")
+    share_count = row[0]
+    await db.commit()
+    return {"share_count": share_count}

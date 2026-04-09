@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "placeholder_avatar_v2",
+      "kind": "placeholder",
+      "path": "avatar-v2.png",
+      "width": 512,
+      "height": 512,
+      "prompt": "A clean modern avatar placeholder, flat design, friendly, high quality, center composition",
+      "tags": ["avatar", "placeholder", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "placeholder_cover_coliving_v2",
+      "kind": "placeholder",
+      "path": "cover-coliving-v2.png",
+      "width": 1200,
+      "height": 630,
+      "prompt": "A modern co-living room cover image, bright natural light, minimal style, realistic photo, no text",
+      "tags": ["cover", "coliving", "placeholder", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "placeholder_cover_events_v2",
+      "kind": "placeholder",
+      "path": "cover-events-v2.png",
+      "width": 1200,
+      "height": 630,
+      "prompt": "A modern event cover image, warm atmosphere, realistic photo, no text, no logos",
+      "tags": ["cover", "events", "placeholder", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "placeholder_poster_bg_v2",
+      "kind": "placeholder",
+      "path": "poster-bg-v2.png",
+      "width": 1080,
+      "height": 1920,
+      "prompt": "A clean poster background with subtle gradients, modern style, no text, suitable for overlay",
+      "tags": ["poster", "background", "placeholder", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "empty_error_v2",
+      "kind": "empty_state",
+      "path": "empty-error-v2.png",
+      "width": 800,
+      "height": 600,
+      "prompt": "An empty state illustration for error, modern flat illustration, soft colors, no text",
+      "tags": ["empty", "error", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "empty_list_v2",
+      "kind": "empty_state",
+      "path": "empty-list-v2.png",
+      "width": 800,
+      "height": 600,
+      "prompt": "An empty state illustration for empty list, modern flat illustration, soft colors, no text",
+      "tags": ["empty", "list", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "banner_v2_1",
+      "kind": "banner",
+      "path": "banner-v2-1.png",
+      "width": 1125,
+      "height": 540,
+      "prompt": "A lifestyle banner image, modern and bright, realistic photo, no text",
+      "tags": ["banner", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "banner_v2_2",
+      "kind": "banner",
+      "path": "banner-v2-2.png",
+      "width": 1125,
+      "height": 540,
+      "prompt": "A travel and city lifestyle banner image, modern and bright, realistic photo, no text",
+      "tags": ["banner", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "banner_v2_3",
+      "kind": "banner",
+      "path": "banner-v2-3.png",
+      "width": 1125,
+      "height": 540,
+      "prompt": "A community and people banner image, modern and bright, realistic photo, no text",
+      "tags": ["banner", "v2"],
+      "format": "png"
+    },
+    {
+      "id": "logo",
+      "kind": "misc",
+      "path": "logo.png",
+      "width": 512,
+      "height": 512,
+      "prompt": "A minimal logo mark placeholder, simple geometric shape, flat design, no text",
+      "tags": ["logo", "misc"],
+      "format": "png"
+    },
+
+    {
+      "id": "gen_avatar_001",
+      "kind": "avatar",
+      "path": "gen/avatars/avatar-001.png",
+      "width": 512,
+      "height": 512,
+      "prompt": "A realistic portrait avatar photo, friendly smile, natural lighting, plain background, no text, no watermark",
+      "tags": ["avatar", "realistic", "portrait"],
+      "format": "png"
+    },
+    {
+      "id": "gen_avatar_002",
+      "kind": "avatar",
+      "path": "gen/avatars/avatar-002.png",
+      "width": 512,
+      "height": 512,
+      "prompt": "A realistic portrait avatar photo, modern style, natural lighting, plain background, no text, no watermark",
+      "tags": ["avatar", "realistic", "portrait"],
+      "format": "png"
+    },
+    {
+      "id": "gen_event_cover_001",
+      "kind": "event_cover",
+      "path": "gen/events/event-cover-001.png",
+      "width": 1200,
+      "height": 630,
+      "prompt": "A realistic event cover photo, warm lighting, people in a casual meetup, no text, no logos",
+      "tags": ["events", "cover", "realistic"],
+      "format": "png"
+    },
+    {
+      "id": "gen_post_image_001",
+      "kind": "post_image",
+      "path": "gen/posts/post-image-001.png",
+      "width": 1024,
+      "height": 1024,
+      "prompt": "A realistic lifestyle photo suitable for a community post, modern composition, no text, no watermark",
+      "tags": ["post", "image", "realistic"],
+      "format": "png"
+    }
+  ]
+}
+
