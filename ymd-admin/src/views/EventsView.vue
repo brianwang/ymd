@@ -90,6 +90,14 @@
               <div class="lbl-t">地址</div>
               <input v-model="form.address" class="input" />
             </label>
+          <label class="lbl">
+            <div class="lbl-t">纬度 lat（可空）</div>
+            <input v-model="form.lat" class="input" type="number" step="any" />
+          </label>
+          <label class="lbl">
+            <div class="lbl-t">经度 lng（可空）</div>
+            <input v-model="form.lng" class="input" type="number" step="any" />
+          </label>
             <label class="lbl">
               <div class="lbl-t">封面 URL</div>
               <input v-model="form.cover_url" class="input" />
@@ -140,6 +148,8 @@ type AdminEvent = {
   category: string;
   city: string;
   address: string | null;
+  lat?: number | null;
+  lng?: number | null;
   cover_url: string | null;
   summary: string | null;
   content: string | null;
@@ -172,6 +182,8 @@ const form = ref({
   category: '',
   city: '',
   address: '',
+  lat: '',
+  lng: '',
   cover_url: '',
   summary: '',
   content: '',
@@ -265,6 +277,8 @@ const openCreate = () => {
     category: '',
     city: '',
     address: '',
+    lat: '',
+    lng: '',
     cover_url: '',
     summary: '',
     content: '',
@@ -283,6 +297,8 @@ const openEdit = (it: AdminEvent) => {
     category: it.category,
     city: it.city,
     address: it.address || '',
+    lat: it.lat == null ? '' : String(it.lat),
+    lng: it.lng == null ? '' : String(it.lng),
     cover_url: it.cover_url || '',
     summary: it.summary || '',
     content: it.content || '',
@@ -306,6 +322,8 @@ const save = async () => {
     category: form.value.category.trim(),
     city: form.value.city.trim(),
     address: form.value.address.trim() || null,
+    lat: form.value.lat === '' ? null : Number(form.value.lat),
+    lng: form.value.lng === '' ? null : Number(form.value.lng),
     cover_url: form.value.cover_url.trim() || null,
     summary: form.value.summary || null,
     content: form.value.content || null,
@@ -326,6 +344,20 @@ const save = async () => {
   if (payload.capacity != null && (!Number.isFinite(payload.capacity) || payload.capacity < 0)) {
     window.alert('名额需为非负整数或留空');
     return;
+  }
+  if ((payload.lat == null) !== (payload.lng == null)) {
+    window.alert('lat/lng 必须同时填写或同时留空');
+    return;
+  }
+  if (payload.lat != null && payload.lng != null) {
+    if (!Number.isFinite(payload.lat) || payload.lat < -90 || payload.lat > 90) {
+      window.alert('lat 需在 -90~90');
+      return;
+    }
+    if (!Number.isFinite(payload.lng) || payload.lng < -180 || payload.lng > 180) {
+      window.alert('lng 需在 -180~180');
+      return;
+    }
   }
 
   saving.value = true;

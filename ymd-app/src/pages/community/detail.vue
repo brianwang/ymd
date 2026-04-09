@@ -23,6 +23,7 @@
           </view>
         </view>
         <view class="post-content">{{ post.content }}</view>
+        <PostMeta :location="post.location" :tags="post.tags" />
         <PostMedia mode="detail" :media="post.media" :image-urls="post.image_urls" />
         <view class="actions-bar">
           <view class="action-item" :class="{ disabled: likeLoading }" @click.stop="toggleLike">
@@ -112,7 +113,16 @@ import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import PostMedia, { type PostMediaItem } from '@/components/community/PostMedia.vue';
+import PostMeta from '@/components/community/PostMeta.vue';
 import { TESTDATA_IMAGES } from '@/constants/testdataImages';
+
+type PostLocation = {
+  name: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  raw?: any;
+};
 
 type PostOut = {
   id: number;
@@ -120,6 +130,8 @@ type PostOut = {
   content: string;
   image_urls: string[];
   media?: PostMediaItem[] | null;
+  location?: PostLocation | null;
+  tags?: string[];
   like_count: number;
   comment_count: number;
   favorite_count: number;

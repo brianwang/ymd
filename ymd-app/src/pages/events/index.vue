@@ -41,7 +41,7 @@
               <image class="reco-img" :src="e.cover" mode="aspectFill" />
               <view class="reco-meta">
                 <text class="reco-title">{{ e.title }}</text>
-                <text class="reco-sub">{{ e.city }} · {{ e.dateText }}</text>
+                <text class="reco-sub">{{ formatRecoSub(e) }}</text>
               </view>
             </Card>
           </view>
@@ -123,6 +123,7 @@
 import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { request } from '@/utils/request';
+import { useUserStore } from '@/store/user';
 import AppBar from '@/components/ui/AppBar.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -149,7 +150,10 @@ type EventItem = {
   cover: string;
   priceText: string;
   tags: string[];
+  distance_km?: number | null;
 };
+
+const userStore = useUserStore();
 
 const banners = ref<Banner[]>([
   { id: 1, title: '游牧岛 · 城市活动季', sub: '共创 / 分享 / 同行', image: TESTDATA_IMAGES.bannerV2_1 },
@@ -176,7 +180,8 @@ const enrich = (e: EventItem) => {
 
 const list = computed(() => allEvents.value.map(enrich));
 
-const recommended = computed(() => list.value.slice(0, 6));
+const recommendedEvents = ref<EventItem[]>([]);
+const recommended = computed(() => recommendedEvents.value.map(enrich));
 
 const filteredEvents = computed(() => {
   const now = new Date();
@@ -204,8 +209,13 @@ const reload = async () => {
   status.value = 'loading';
   errorText.value = '';
   try {
-    const data: any[] = (await request({ url: '/events', method: 'GET' })) as any[];
-    allEvents.value = (data || []).map((it) => ({
+    const loc = userStore.preferredLocation;
+    const near = loc ? { near_lat: loc.lat, near_lng: loc.lng } : {};
+    const [data, reco]: any = await Promise.all([
+      request({ url: '/events', method: 'GET' }),
+      request({ url: '/events/recommended', method: 'GET', data: { limit: 6, ...near } }),
+    ]);
+    allEvents.value = (data || []).map((it: any) => ({
       id: it.id,
       title: it.title,
       city: it.city,
@@ -215,11 +225,33 @@ const reload = async () => {
       priceText: '免费',
       tags: [it.category],
     }));
+    recommendedEvents.value = (reco || []).map((it: any) => ({
+      id: it.id,
+      title: it.title,
+      city: it.city,
+      category: it.category,
+      date: it.start_at,
+      cover: it.cover_url || TESTDATA_IMAGES.coverEventsV2,
+      priceText: '免费',
+      tags: [it.category],
+      distance_km: typeof it.distance_km === 'number' ? it.distance_km : null,
+    }));
     status.value = 'ready';
   } catch (e: any) {
     status.value = 'error';
     errorText.value = e?.message || '请稍后再试';
   }
+};
+
+const formatRecoSub = (e: any) => {
+  const parts: string[] = [];
+  if (e?.distance_km != null && typeof e.distance_km === 'number' && Number.isFinite(e.distance_km)) {
+    parts.push(`距你 ${e.distance_km.toFixed(1)}km`);
+  } else if (e?.city) {
+    parts.push(String(e.city));
+  }
+  if (e?.dateText) parts.push(String(e.dateText));
+  return parts.filter(Boolean).join(' · ');
 };
 
 const resetFilters = () => {

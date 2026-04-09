@@ -58,6 +58,8 @@ async def create_event(
         category=body.category.strip(),
         city=body.city.strip(),
         address=body.address.strip() if body.address else None,
+        lat=body.lat,
+        lng=body.lng,
         cover_url=body.cover_url.strip() if body.cover_url else None,
         summary=body.summary,
         content=body.content,
@@ -95,6 +97,8 @@ async def update_event(
             category=body.category.strip(),
             city=body.city.strip(),
             address=body.address.strip() if body.address else None,
+            lat=body.lat,
+            lng=body.lng,
             cover_url=body.cover_url.strip() if body.cover_url else None,
             summary=body.summary,
             content=body.content,
@@ -155,4 +159,3 @@ async def list_registrations(
     )
     res = await db.execute(stmt)
     return list(res.scalars().all())
-

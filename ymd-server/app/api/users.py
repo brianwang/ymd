@@ -40,6 +40,9 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 
 @router.get("/me/location", response_model=PreferredLocation | None, response_model_exclude_none=True)
 async def get_my_preferred_location(current_user: User = Depends(get_current_active_user)):
+    """
+    读取当前用户偏好位置；未设置时返回 null。
+    """
     return current_user.preferred_location
 
 
@@ -49,6 +52,9 @@ async def put_my_preferred_location(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    更新当前用户偏好位置（lat/lng + 展示名/城市/来源）。
+    """
     # Persist to dedicated columns for proximity queries/auditing
     current_user.preferred_location_lat = body.lat
     current_user.preferred_location_lng = body.lng

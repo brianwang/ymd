@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { api } from '../utils/request';
+import { ApiError, api } from '../utils/request';
 
 type TokenResp = {
   access_token: string;
@@ -40,6 +40,17 @@ export const useAuthStore = defineStore('auth', () => {
     });
     setToken(data.access_token);
     setUserId(data.user_id);
+
+    try {
+      await api('/admin/users?limit=1&offset=0');
+    } catch (err: any) {
+      if (err instanceof ApiError && err.status === 403) {
+        logout();
+        throw new Error('权限不足：需要管理员权限');
+      }
+      logout();
+      throw err;
+    }
     return data;
   };
 

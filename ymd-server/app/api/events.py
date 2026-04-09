@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.models.event import Event
 from app.models.event_registration import EventRegistration
 from app.models.user import User
-from app.schemas.event import EventListItem, EventOut
+from app.schemas.event import EventListItem, EventListItemWithDistance, EventOut
 from app.schemas.event_registration import EventRegistrationCreate
 from app.utils.geo import sql_distance_km_expr, round_distance_km, validate_lat_lng
 
@@ -79,20 +79,26 @@ async def _cancel_registration(event_id: int, current_user: User, db: AsyncSessi
     return CancelResult(status="canceled", registered_count=new_count, capacity=event.capacity)
 
 
-@router.get("/events", response_model=list[EventListItem])
+@router.get("/events", response_model=list[EventListItem | EventListItemWithDistance])
 async def list_events(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    category: str | None = Query(None),
-    city: str | None = Query(None),
-    start_from: datetime | None = Query(None),
-    start_to: datetime | None = Query(None),
-    near_lat: float | None = Query(None),
-    near_lng: float | None = Query(None),
-    radius_km: float | None = Query(None, gt=0),
-    sort: str = Query("default", pattern="^(default|distance|start_time)$"),
+    category: str | None = Query(None, description="活动分类过滤"),
+    city: str | None = Query(None, description="城市过滤"),
+    start_from: datetime | None = Query(None, description="开始时间下限（ISO 8601）"),
+    start_to: datetime | None = Query(None, description="开始时间上限（ISO 8601）"),
+    near_lat: float | None = Query(None, description="附近计算纬度；需与 near_lng 成对提供"),
+    near_lng: float | None = Query(None, description="附近计算经度；需与 near_lat 成对提供"),
+    radius_km: float | None = Query(None, gt=0, description="半径过滤（km）；需配合 near_lat/near_lng"),
+    sort: str = Query("default", pattern="^(default|distance|start_time)$", description="排序：default | distance | start_time"),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    活动列表接口：
+    - 保留原有过滤：category/city/start_from/start_to
+    - 可选启用附近能力：提供 near_lat/near_lng 后可用 radius_km 与 sort=distance
+    - distance_km 仅在启用附近计算且活动有 lat/lng 时返回，单位 km，四舍五入到 0.1km
+    """
     near_enabled = (near_lat is not None) or (near_lng is not None)
     if near_enabled and (near_lat is None or near_lng is None):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="near_lat and near_lng must be provided together")
@@ -101,7 +107,10 @@ async def list_events(
     if sort == "distance" and not near_enabled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sort=distance requires near_lat/near_lng")
     if near_enabled:
-        validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+        try:
+            validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     distance_expr = None
     if near_enabled:
@@ -143,25 +152,30 @@ async def list_events(
         return list(res.scalars().all())
 
     rows = res.all()
-    items: list[EventListItem] = []
+    items: list[EventListItem | EventListItemWithDistance] = []
     for event, dist_raw in rows:
-        item = EventListItem.model_validate(event)
         if dist_raw is not None and event.lat is not None and event.lng is not None:
-            item = item.model_copy(update={"distance_km": round_distance_km(float(dist_raw))})
-        items.append(item)
+            items.append(
+                EventListItemWithDistance.model_validate(event).model_copy(
+                    update={"distance_km": round_distance_km(float(dist_raw))}
+                )
+            )
+        else:
+            items.append(EventListItem.model_validate(event))
     return items
 
 
-@router.get("/events/recommended", response_model=list[EventListItem], response_model_exclude_none=True)
+@router.get("/events/recommended", response_model=list[EventListItem | EventListItemWithDistance])
 async def recommended_events(
     limit: int = Query(6, ge=1, le=20),
-    near_lat: float | None = Query(None),
-    near_lng: float | None = Query(None),
-    radius_km: float | None = Query(None, gt=0),
+    near_lat: float | None = Query(None, description="附近计算纬度；需与 near_lng 成对提供"),
+    near_lng: float | None = Query(None, description="附近计算经度；需与 near_lat 成对提供"),
+    radius_km: float | None = Query(None, gt=0, description="半径过滤（km）；需配合 near_lat/near_lng"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    首页推荐：默认取“即将开始”的活动；若提供 near_lat/near_lng 则优先按距离排序。
+    首页/列表推荐：默认取“即将开始”的活动；若提供 near_lat/near_lng 则优先按距离排序。
+    distance_km 仅在启用附近计算且活动有 lat/lng 时返回，单位 km，四舍五入到 0.1km。
     """
     now = datetime.now(timezone.utc)
     near_enabled = (near_lat is not None) or (near_lng is not None)
@@ -170,7 +184,10 @@ async def recommended_events(
     if radius_km is not None and not near_enabled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="radius_km requires near_lat/near_lng")
     if near_enabled:
-        validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+        try:
+            validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     distance_expr = None
     if near_enabled:
@@ -197,12 +214,16 @@ async def recommended_events(
     if not near_enabled:
         return list(res.scalars().all())
     rows = res.all()
-    items: list[EventListItem] = []
+    items: list[EventListItem | EventListItemWithDistance] = []
     for event, dist_raw in rows:
-        item = EventListItem.model_validate(event)
         if dist_raw is not None and event.lat is not None and event.lng is not None:
-            item = item.model_copy(update={"distance_km": round_distance_km(float(dist_raw))})
-        items.append(item)
+            items.append(
+                EventListItemWithDistance.model_validate(event).model_copy(
+                    update={"distance_km": round_distance_km(float(dist_raw))}
+                )
+            )
+        else:
+            items.append(EventListItem.model_validate(event))
     return items
 
 

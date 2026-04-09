@@ -66,6 +66,33 @@
             placeholder-class="ph"
           />
         </view>
+        <view class="field">
+          <text class="label">位置</text>
+          <view class="loc-row">
+            <text class="loc-text">{{ preferredLocationText }}</text>
+            <button class="loc-btn ymd-btn ghost" size="mini" :disabled="locationSaving" @click="handleSetLocation">
+              {{ locationSaving ? '保存中...' : '设置位置' }}
+            </button>
+          </view>
+        </view>
+        <view v-if="manualLocationVisible" class="field">
+          <text class="label">手动输入</text>
+          <input
+            class="input"
+            v-model="manualLocationName"
+            maxlength="100"
+            placeholder="输入城市/位置名"
+            placeholder-class="ph"
+          />
+          <view class="loc-actions">
+            <button class="loc-action ymd-btn" size="mini" :disabled="locationSaving" @click="saveManualLocation">
+              保存
+            </button>
+            <button class="loc-action ymd-btn ghost" size="mini" :disabled="locationSaving" @click="manualLocationVisible = false">
+              取消
+            </button>
+          </view>
+        </view>
         <view v-if="editErrorText" class="error">
           <text class="error-text">{{ editErrorText }}</text>
         </view>
@@ -197,6 +224,13 @@ const saving = ref(false);
 const editErrorText = ref('');
 
 const avatarPreview = computed(() => avatarLocalPath.value || avatarRemoteUrl.value || TESTDATA_IMAGES.avatarV2);
+const preferredLocationText = computed(() => {
+  const loc = userStore.preferredLocation;
+  if (!loc) return '未设置';
+  const name = String(loc.display_name || loc.city || '').trim();
+  if (!name) return '未设置';
+  return name;
+});
 
 const syncFromStore = () => {
   nickname.value = String((userStore.userInfo as any)?.nickname || '');
@@ -217,6 +251,15 @@ const loadMeDetail = async () => {
   const me = await request({ url: '/users/me', method: 'GET' });
   userStore.setUserInfo(me);
   syncFromStore();
+};
+
+const loadMyPreferredLocation = async () => {
+  if (!isMe.value) return;
+  if (!userStore.token) return;
+  try {
+    const loc = (await request({ url: '/users/me/location', method: 'GET' })) as any;
+    userStore.setPreferredLocation(loc || null);
+  } catch {}
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -258,11 +301,92 @@ const reload = async () => {
   pageStatus.value = 'loading';
   errorText.value = '';
   try {
-    await Promise.all([loadProfile(), fetchPosts(true), loadMeDetail()]);
+    await Promise.all([loadProfile(), fetchPosts(true), loadMeDetail(), loadMyPreferredLocation()]);
     pageStatus.value = 'ready';
   } catch (e: any) {
     pageStatus.value = 'error';
     errorText.value = e?.message || '加载失败';
+  }
+};
+
+const locationSaving = ref(false);
+const manualLocationVisible = ref(false);
+const manualLocationName = ref('');
+
+const savePreferredLocation = async (payload: { lat: number; lng: number; display_name: string; city?: string | null }) => {
+  if (!ensureLoginForEdit()) return;
+  locationSaving.value = true;
+  try {
+    const saved = (await request({
+      url: '/users/me/location',
+      method: 'PUT',
+      data: { ...payload, source: 'manual' },
+    })) as any;
+    userStore.setPreferredLocation(saved || null);
+    manualLocationVisible.value = false;
+    uni.showToast({ title: '位置已更新', icon: 'success' });
+  } catch (e: any) {
+    const msg = e?.data?.detail || e?.message || '保存失败';
+    uni.showToast({ title: String(msg), icon: 'none' });
+  } finally {
+    locationSaving.value = false;
+  }
+};
+
+const handleSetLocation = async () => {
+  if (!ensureLoginForEdit()) return;
+  const choose = (uni as any)?.chooseLocation;
+  if (typeof choose !== 'function') {
+    manualLocationName.value = manualLocationName.value || (preferredLocationText.value === '未设置' ? '' : preferredLocationText.value);
+    manualLocationVisible.value = true;
+    return;
+  }
+  choose({
+    success: async (res: any) => {
+      const lat = Number(res?.latitude);
+      const lng = Number(res?.longitude);
+      const display_name = String(res?.name || res?.address || '').trim();
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !display_name) {
+        manualLocationName.value = manualLocationName.value || (preferredLocationText.value === '未设置' ? '' : preferredLocationText.value);
+        manualLocationVisible.value = true;
+        return;
+      }
+      await savePreferredLocation({ lat, lng, display_name });
+    },
+    fail: () => {
+      manualLocationName.value = manualLocationName.value || (preferredLocationText.value === '未设置' ? '' : preferredLocationText.value);
+      manualLocationVisible.value = true;
+    },
+  });
+};
+
+const getDeviceLatLng = () => {
+  return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
+    const getLoc = (uni as any)?.getLocation;
+    if (typeof getLoc !== 'function') {
+      reject(new Error('无法获取定位'));
+      return;
+    }
+    getLoc({
+      type: 'gcj02',
+      success: (res: any) => resolve({ lat: Number(res?.latitude), lng: Number(res?.longitude) }),
+      fail: () => reject(new Error('无法获取定位')),
+    });
+  });
+};
+
+const saveManualLocation = async () => {
+  const name = String(manualLocationName.value || '').trim();
+  if (!name) {
+    uni.showToast({ title: '请输入城市/位置名', icon: 'none' });
+    return;
+  }
+  try {
+    const { lat, lng } = await getDeviceLatLng();
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('无法获取定位');
+    await savePreferredLocation({ lat, lng, display_name: name, city: name });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '无法获取定位，请尝试地图选点', icon: 'none' });
   }
 };
 
@@ -451,6 +575,11 @@ onReachBottom(() => {
 .error-text { font-size: 12px; color: rgba(239, 68, 68, 1); font-weight: 700; }
 .save { margin-top: 14px; border-radius: $ymd-v2-radius-md; height: 46px; line-height: 46px; font-weight: 800; }
 .tap { opacity: .88; }
+.loc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.loc-text { flex: 1; min-width: 0; font-size: 14px; color: $ymd-v2-color-text; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-btn { height: 34px; line-height: 34px; padding: 0 12px; font-size: 12px; font-weight: 800; }
+.loc-actions { margin-top: 10px; display: flex; gap: 10px; }
+.loc-action { flex: 1; height: 36px; line-height: 36px; font-weight: 800; }
 
 .sk { padding: 14px; }
 .sk-list { display: flex; flex-direction: column; gap: 12px; }

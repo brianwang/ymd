@@ -11,7 +11,6 @@ class MediaItem(BaseModel):
 
 
 class PostLocation(BaseModel):
-    # 前端至少会展示 name；其余字段按平台能力可选
     name: str = Field(..., min_length=1, max_length=100)
     address: Optional[str] = Field(default=None, max_length=200)
     latitude: Optional[float] = None
@@ -19,17 +18,11 @@ class PostLocation(BaseModel):
     raw: Optional[dict[str, Any]] = None
 
 class PostCreate(BaseModel):
-    # 兼容期：允许纯媒体帖，因此 content 可为空/缺省；最终落库会用空字符串代替 None
     content: Optional[str] = None
-    # 兼容旧字段：继续支持 image_urls 的入参
     image_urls: List[str] = []
-    # 新字段：统一媒体表达
     media: List[MediaItem] = []
-    # 新增：可选地理位置
     location: Optional[PostLocation] = None
-    # 新增：可选标签（服务端会与正文解析的 #标签 合并去重归一化）
     tags: List[str] = []
-    # 新增：可选经纬度/城市（用于附近排序/过滤；字段可空）
     lat: Optional[float] = None
     lng: Optional[float] = None
     city: Optional[str] = None
@@ -44,13 +37,11 @@ class PostCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_location_fields(self):
-        # lat/lng 必须成对出现
         if (self.lat is None) ^ (self.lng is None):
             raise ValueError("lat/lng 必须同时提供或同时为空")
         if self.lat is not None and self.lng is not None:
             validate_lat_lng(lat=self.lat, lng=self.lng)
 
-        # 兼容：若 location 带了经纬度，则与 lat/lng 对齐或补全
         if self.location is not None and self.location.latitude is not None and self.location.longitude is not None:
             validate_lat_lng(lat=self.location.latitude, lng=self.location.longitude)
             if self.lat is None and self.lng is None:
@@ -82,7 +73,6 @@ class PostBase(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
-    distance_km: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -91,6 +81,10 @@ class PostOut(PostBase):
     liked_by_me: bool = False
     favorited_by_me: bool = False
     author: Optional[UserPublic] = None
+
+
+class PostOutWithDistance(PostOut):
+    distance_km: float
 
 class PostLikeToggleOut(BaseModel):
     liked: bool

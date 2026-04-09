@@ -15,10 +15,13 @@ class EventListItem(BaseModel):
     signup_deadline_at: datetime
     capacity: int | None = None
     registered_count: int
-    distance_km: float | None = None
 
     class Config:
         from_attributes = True
+
+
+class EventListItemWithDistance(EventListItem):
+    distance_km: float
 
 
 class EventOut(EventListItem):

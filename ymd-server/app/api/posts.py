@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, delete, update, func
+from sqlalchemy import and_, delete, update, func, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -11,7 +11,15 @@ from app.models.post import Post
 from app.models.comment import Comment
 from app.models.post_like import PostLike
 from app.models.post_favorite import PostFavorite
-from app.schemas.post import PostCreate, PostOut, PostLikeToggleOut, PostFavoriteToggleOut, PostShareOut, MediaItem
+from app.schemas.post import (
+    PostCreate,
+    PostOut,
+    PostOutWithDistance,
+    PostLikeToggleOut,
+    PostFavoriteToggleOut,
+    PostShareOut,
+    MediaItem,
+)
 from app.schemas.user import UserPublic
 from app.schemas.comment import CommentCreate, CommentOut
 from datetime import date
@@ -28,6 +36,7 @@ from app.services.points import (
     comment_reward_biz_key,
 )
 from app.services.ops_config import get_reward_config
+from app.utils.geo import sql_distance_km_expr, round_distance_km, validate_lat_lng
 
 router = APIRouter()
 
@@ -51,9 +60,16 @@ def _normalize_post_media(*, media: list | None, image_urls: list[str] | None) -
         normalized_image_urls = list(image_urls)
     return (media_items, normalized_image_urls)
 
-def _to_post_out(*, post: Post, author: UserPublic, liked_by_me: bool, favorited_by_me: bool) -> PostOut:
+def _to_post_out(
+    *,
+    post: Post,
+    author: UserPublic,
+    liked_by_me: bool,
+    favorited_by_me: bool,
+    distance_km: float | None = None,
+) -> PostOut | PostOutWithDistance:
     media_items, image_urls = _normalize_post_media(media=getattr(post, "media", None), image_urls=getattr(post, "image_urls", None))
-    return PostOut.model_validate(post).model_copy(
+    base = PostOut.model_validate(post).model_copy(
         update={
             "liked_by_me": liked_by_me,
             "favorited_by_me": favorited_by_me,
@@ -64,50 +80,132 @@ def _to_post_out(*, post: Post, author: UserPublic, liked_by_me: bool, favorited
             "content": (getattr(post, "content", "") or ""),
         }
     )
+    if distance_km is None:
+        return base
+    return PostOutWithDistance.model_validate(base).model_copy(update={"distance_km": distance_km})
 
-@router.get("/posts", response_model=List[PostOut])
+@router.get("/posts", response_model=List[PostOut | PostOutWithDistance])
 async def list_posts(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    user_id: int | None = Query(None, ge=1),
+    user_id: int | None = Query(None, ge=1, description="按用户过滤（可选）"),
+    near_lat: float | None = Query(None, description="附近计算纬度；需与 near_lng 成对提供"),
+    near_lng: float | None = Query(None, description="附近计算经度；需与 near_lat 成对提供"),
+    radius_km: float | None = Query(None, gt=0, description="半径过滤（km）；需配合 near_lat/near_lng"),
+    sort: str = Query("default", pattern="^(default|distance)$", description="排序：default | distance"),
     current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    帖子列表接口：
+    - 默认按创建时间倒序
+    - 提供 near_lat/near_lng 后可用 radius_km 与 sort=distance
+    - distance_km 仅在启用附近计算且帖子有 lat/lng 时返回，单位 km，四舍五入到 0.1km
+    """
+    near_enabled = (near_lat is not None) or (near_lng is not None)
+    if near_enabled and (near_lat is None or near_lng is None):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="near_lat and near_lng must be provided together")
+    if radius_km is not None and not near_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="radius_km requires near_lat/near_lng")
+    if sort == "distance" and not near_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sort=distance requires near_lat/near_lng")
+    if near_enabled:
+        try:
+            validate_lat_lng(lat=float(near_lat), lng=float(near_lng))
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    distance_expr = None
+    if near_enabled:
+        distance_expr = sql_distance_km_expr(
+            lat_col=Post.lat, lng_col=Post.lng, near_lat=float(near_lat), near_lng=float(near_lng)
+        ).label("distance_km_raw")
+
     conditions = [Post.deleted_at.is_(None)]
     if user_id is not None:
         conditions.append(Post.user_id == user_id)
 
     if current_user is None:
-        stmt = (
-            select(Post, User)
-            .join(User, User.id == Post.user_id)
-            .where(and_(*conditions))
-            .order_by(Post.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(Post, User, distance_expr) if near_enabled else select(Post, User)
+        stmt = stmt.join(User, User.id == Post.user_id).where(and_(*conditions))
+        if radius_km is not None and distance_expr is not None:
+            stmt = stmt.where(and_(Post.lat.is_not(None), Post.lng.is_not(None), distance_expr <= float(radius_km)))
+        if sort == "distance" and distance_expr is not None:
+            null_flag = or_(Post.lat.is_(None), Post.lng.is_(None))
+            stmt = stmt.order_by(null_flag.asc(), distance_expr.asc(), Post.created_at.desc(), Post.id.desc())
+        else:
+            stmt = stmt.order_by(Post.created_at.desc(), Post.id.desc())
+        stmt = stmt.limit(limit).offset(offset)
         result = await db.execute(stmt)
         rows = result.all()
-        items: List[PostOut] = []
-        for post, author in rows:
-            items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=False, favorited_by_me=False))
+        items: List[PostOut | PostOutWithDistance] = []
+        if not near_enabled:
+            for post, author in rows:
+                items.append(
+                    _to_post_out(
+                        post=post, author=UserPublic.model_validate(author), liked_by_me=False, favorited_by_me=False
+                    )
+                )
+            return items
+        for post, author, dist_raw in rows:
+            dk = None
+            if dist_raw is not None and post.lat is not None and post.lng is not None:
+                dk = round_distance_km(float(dist_raw))
+            items.append(
+                _to_post_out(
+                    post=post,
+                    author=UserPublic.model_validate(author),
+                    liked_by_me=False,
+                    favorited_by_me=False,
+                    distance_km=dk,
+                )
+            )
         return items
 
+    stmt = select(Post, User, PostLike.id, PostFavorite.id, distance_expr) if near_enabled else select(
+        Post, User, PostLike.id, PostFavorite.id
+    )
     stmt = (
-        select(Post, User, PostLike.id, PostFavorite.id)
-        .join(User, User.id == Post.user_id)
+        stmt.join(User, User.id == Post.user_id)
         .outerjoin(PostLike, and_(PostLike.post_id == Post.id, PostLike.user_id == current_user.id))
         .outerjoin(PostFavorite, and_(PostFavorite.post_id == Post.id, PostFavorite.user_id == current_user.id))
         .where(and_(*conditions))
-        .order_by(Post.created_at.desc())
-        .limit(limit)
-        .offset(offset)
     )
+    if radius_km is not None and distance_expr is not None:
+        stmt = stmt.where(and_(Post.lat.is_not(None), Post.lng.is_not(None), distance_expr <= float(radius_km)))
+    if sort == "distance" and distance_expr is not None:
+        null_flag = or_(Post.lat.is_(None), Post.lng.is_(None))
+        stmt = stmt.order_by(null_flag.asc(), distance_expr.asc(), Post.created_at.desc(), Post.id.desc())
+    else:
+        stmt = stmt.order_by(Post.created_at.desc(), Post.id.desc())
+    stmt = stmt.limit(limit).offset(offset)
     result = await db.execute(stmt)
     rows = result.all()
-    items: List[PostOut] = []
-    for post, author, like_id, fav_id in rows:
-        items.append(_to_post_out(post=post, author=UserPublic.model_validate(author), liked_by_me=like_id is not None, favorited_by_me=fav_id is not None))
+    items: List[PostOut | PostOutWithDistance] = []
+    if not near_enabled:
+        for post, author, like_id, fav_id in rows:
+            items.append(
+                _to_post_out(
+                    post=post,
+                    author=UserPublic.model_validate(author),
+                    liked_by_me=like_id is not None,
+                    favorited_by_me=fav_id is not None,
+                )
+            )
+        return items
+    for post, author, like_id, fav_id, dist_raw in rows:
+        dk = None
+        if dist_raw is not None and post.lat is not None and post.lng is not None:
+            dk = round_distance_km(float(dist_raw))
+        items.append(
+            _to_post_out(
+                post=post,
+                author=UserPublic.model_validate(author),
+                liked_by_me=like_id is not None,
+                favorited_by_me=fav_id is not None,
+                distance_km=dk,
+            )
+        )
     return items
 
 @router.post("/posts", response_model=PostOut, status_code=status.HTTP_201_CREATED)
@@ -139,6 +237,9 @@ async def create_post(
         media=[m.model_dump() for m in media_items],
         location=location,
         tags=tags,
+        lat=post_in.lat,
+        lng=post_in.lng,
+        city=post_in.city,
     )
     db.add(post)
     await db.flush()

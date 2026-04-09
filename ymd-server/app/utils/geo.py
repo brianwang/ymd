@@ -35,7 +35,6 @@ def haversine_km(*, lat1: float, lng1: float, lat2: float, lng2: float) -> float
 
 
 def round_distance_km(distance_km: float) -> float:
-    # 四舍五入到 0.1km
     return round(distance_km + 1e-9, 1)
 
 
@@ -44,7 +43,6 @@ def sql_distance_km_expr(*, lat_col: Any, lng_col: Any, near_lat: float, near_ln
     SQLAlchemy distance expression (km) for PostgreSQL without PostGIS, using Haversine.
     Note: `lat_col/lng_col` should be model columns (nullable allowed).
     """
-    # Guard rails: don't silently accept invalid query inputs
     validate_lat_lng(lat=near_lat, lng=near_lng)
 
     lat1 = sa_func.radians(near_lat)
@@ -56,6 +54,19 @@ def sql_distance_km_expr(*, lat_col: Any, lng_col: Any, near_lat: float, near_ln
         sa_func.sin(d_lng / 2.0), 2
     )
     c = 2.0 * sa_func.asin(sa_func.sqrt(a))
-    # Cast helps SQLAlchemy typing and prevents integer math surprises
     return sa_func.cast(EARTH_RADIUS_KM * c, Float)
 
+
+def stable_distance_sort_key(*, distance_km: float | None, created_at, entity_id: int):
+    """
+    Stable sorting rule used by list endpoints when sort=distance:
+    1) 有位置的排在前；无位置的排在后
+    2) 距离升序
+    3) created_at 降序
+    4) id 降序
+    """
+    missing = 1 if distance_km is None else 0
+    dist = float("inf") if distance_km is None else float(distance_km)
+    ts = getattr(created_at, "timestamp", None)
+    created_ts = ts() if callable(ts) else 0.0
+    return (missing, dist, -created_ts, -int(entity_id))

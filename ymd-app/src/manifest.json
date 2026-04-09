@@ -54,7 +54,11 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "requiredPrivateInfos": [
+            "chooseLocation",
+            "getLocation"
+        ]
     },
     "mp-alipay" : {
         "usingComponents" : true
@@ -67,6 +71,15 @@
     },
     "uniStatistics": {  
         "enable": false
+    },
+    "h5": {
+        "sdkConfigs": {
+            "maps": {
+                "qqmap": {
+                    "key": "这里替换为你申请的腾讯地图 Key"
+                }
+            }
+        }
     },
     "vueVersion" : "3"
 }

@@ -48,6 +48,11 @@
       <view class="ymd-section">
         <SectionHeader title="功能入口" />
         <Card class="menu">
+          <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goMyProfile">
+            <text class="menu-text">设置位置</text>
+            <text class="arrow">›</text>
+          </view>
+          <Divider inset />
           <view class="menu-item" hover-class="tap" hover-stay-time="70" @click="goMyEvents">
             <text class="menu-text">我的活动</text>
             <text class="arrow">›</text>
@@ -107,8 +112,15 @@ const nicknameText = computed(() => {
   if (!userStore.token) return '未登录';
   return userStore.userInfo?.nickname || '数字游民';
 });
+const locationText = computed(() => {
+  const loc = userStore.preferredLocation;
+  const raw = loc?.display_name || loc?.city || '';
+  const name = String(raw || '').trim();
+  return name ? name : '未设置';
+});
 const metaText = computed(() => {
   if (!userStore.token) return '登录后可同步积分与资料';
+  if (locationText.value !== '未设置') return `位置：${locationText.value}`;
   return '欢迎回来';
 });
 

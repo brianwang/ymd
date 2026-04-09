@@ -23,14 +23,14 @@
       </view>
 
       <view class="ymd-section">
-        <SectionHeader title="推荐空间" />
+        <SectionHeader :title="recommendedTitle" />
         <scroll-view scroll-x class="reco">
           <view class="reco-inner">
             <Card v-for="s in recommended" :key="s.id" class="reco-card" pressable @click="goDetail(s.id)">
               <image class="reco-img" :src="s.cover" mode="aspectFill" />
               <view class="reco-meta">
                 <text class="reco-title">{{ s.name }}</text>
-                <text class="reco-sub">{{ s.city }} · {{ s.priceText }}</text>
+                <text class="reco-sub">{{ recommendedSub(s) }}</text>
               </view>
             </Card>
           </view>
@@ -111,6 +111,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
+import { useUserStore } from '@/store/user';
 import AppBar from '@/components/ui/AppBar.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -128,6 +129,8 @@ type SpaceItem = {
   priceText: string;
   distanceText: string;
   tags: string[];
+  lat: number;
+  lng: number;
 };
 
 const cities = ['全部', '上海', '杭州', '成都', '深圳', '厦门'];
@@ -137,7 +140,45 @@ const status = ref<PageStatus>('loading');
 const errorText = ref<string>('');
 const allSpaces = ref<SpaceItem[]>([]);
 
-const recommended = computed(() => allSpaces.value.slice(0, 6));
+const userStore = useUserStore();
+const hasPreferredLocation = computed(() => {
+  const loc = userStore.preferredLocation;
+  return !!loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng);
+});
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
+const distanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+const recommendedTitle = computed(() => (hasPreferredLocation.value ? '附近推荐' : '推荐空间'));
+
+const recommended = computed(() => {
+  if (!hasPreferredLocation.value) return allSpaces.value.slice(0, 6);
+  const loc = userStore.preferredLocation!;
+  return allSpaces.value
+    .map((s) => {
+      const d = distanceKm(loc.lat, loc.lng, s.lat, s.lng);
+      return { ...s, distance_km: round1(d) };
+    })
+    .sort((a: any, b: any) => (a.distance_km ?? 1e18) - (b.distance_km ?? 1e18))
+    .slice(0, 6) as any;
+});
+
+const recommendedSub = (s: any) => {
+  if (hasPreferredLocation.value && typeof s?.distance_km === 'number' && Number.isFinite(s.distance_km)) {
+    return `${s.city} · 距你 ${s.distance_km.toFixed(1)}km`;
+  }
+  return `${s.city} · ${s.priceText}`;
+};
 
 const filteredSpaces = computed(() => {
   return allSpaces.value.filter((s) => (city.value === '全部' ? true : s.city === city.value));
@@ -145,11 +186,11 @@ const filteredSpaces = computed(() => {
 
 const seed = () => {
   allSpaces.value = [
-    { id: 201, name: '海边共居 · 日出工位', city: '厦门', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥199/晚', distanceText: '地铁 5 分钟', tags: ['海边', '安静', '高速网络'] },
-    { id: 202, name: '城市共居 · 极简公寓', city: '上海', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥259/晚', distanceText: '市中心', tags: ['通勤友好', '独立卫浴', '共享厨房'] },
-    { id: 203, name: '山间共居 · 轻度躺平', city: '成都', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥169/晚', distanceText: '打车 15 分钟', tags: ['自然', '冥想', '宠物友好'] },
-    { id: 204, name: '湖畔共居 · 深度专注', city: '杭州', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥189/晚', distanceText: '公交 10 分钟', tags: ['专注', '会议室', '咖啡吧'] },
-    { id: 205, name: '热带共居 · 运动社群', city: '深圳', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥229/晚', distanceText: '公园旁', tags: ['健身', '社群', '夜跑'] },
+    { id: 201, name: '海边共居 · 日出工位', city: '厦门', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥199/晚', distanceText: '地铁 5 分钟', tags: ['海边', '安静', '高速网络'], lat: 24.4798, lng: 118.0894 },
+    { id: 202, name: '城市共居 · 极简公寓', city: '上海', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥259/晚', distanceText: '市中心', tags: ['通勤友好', '独立卫浴', '共享厨房'], lat: 31.2304, lng: 121.4737 },
+    { id: 203, name: '山间共居 · 轻度躺平', city: '成都', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥169/晚', distanceText: '打车 15 分钟', tags: ['自然', '冥想', '宠物友好'], lat: 30.5728, lng: 104.0668 },
+    { id: 204, name: '湖畔共居 · 深度专注', city: '杭州', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥189/晚', distanceText: '公交 10 分钟', tags: ['专注', '会议室', '咖啡吧'], lat: 30.2741, lng: 120.1551 },
+    { id: 205, name: '热带共居 · 运动社群', city: '深圳', cover: TESTDATA_IMAGES.coverColivingV2, priceText: '¥229/晚', distanceText: '公园旁', tags: ['健身', '社群', '夜跑'], lat: 22.5431, lng: 114.0579 },
   ];
 };
 

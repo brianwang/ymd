@@ -2,6 +2,16 @@
   <view class="ymd-page">
     <AppBar title="社区" action-text="发帖" @action="goCreate" />
     <view class="ymd-container ymd-page-inner">
+      <view class="sort-bar">
+        <view class="sort-pill" :class="{ active: sortMode === 'default' }" @click="switchSort('default')">
+          <text class="sort-text">最新</text>
+        </view>
+        <view class="sort-pill" :class="{ active: sortMode === 'distance' }" @click="switchSort('distance')">
+          <text class="sort-text">附近</text>
+        </view>
+        <text v-if="sortMode === 'distance' && nearLabel" class="sort-hint">{{ nearLabel }}</text>
+      </view>
+
       <view v-if="status === 'loading' && posts.length === 0" class="sk">
         <Card class="sk-card">
           <view class="sk-head">
@@ -59,6 +69,7 @@
             </view>
           </view>
           <view class="content">{{ item.content }}</view>
+          <PostMeta :location="item.location" :tags="item.tags" />
           <PostMedia mode="feed" :media="item.media" :image-urls="item.image_urls" />
           <view class="actions-bar">
             <view class="action-item" :class="{ disabled: !!likeLoadingMap[item.id] }" @click.stop="toggleLike(item)">
@@ -88,15 +99,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { ensureLoggedIn, request } from '@/utils/request';
+import { useUserStore } from '@/store/user';
 import AppBar from '@/components/ui/AppBar.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import Skeleton from '@/components/ui/Skeleton.vue';
 import Card from '@/components/ui/Card.vue';
 import PostMedia, { type PostMediaItem } from '@/components/community/PostMedia.vue';
+import PostMeta from '@/components/community/PostMeta.vue';
 import { TESTDATA_IMAGES } from '@/constants/testdataImages';
+
+type PostLocation = {
+  name: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  raw?: any;
+};
 
 type PostOut = {
   id: number;
@@ -104,6 +125,8 @@ type PostOut = {
   content: string;
   image_urls: string[];
   media?: PostMediaItem[] | null;
+  location?: PostLocation | null;
+  tags?: string[];
   like_count: number;
   comment_count: number;
   favorite_count: number;
@@ -117,7 +140,10 @@ type PostOut = {
     nickname?: string | null;
     avatar_url?: string | null;
   } | null;
+  distance_km?: number | null;
 };
+
+const userStore = useUserStore();
 
 const posts = ref<PostOut[]>([]);
 const limit = 20;
@@ -128,6 +154,14 @@ const status = ref<'loading' | 'ready' | 'error'>('loading');
 const errorText = ref('');
 const likeLoadingMap = ref<Record<number, boolean>>({});
 const favLoadingMap = ref<Record<number, boolean>>({});
+const sortMode = ref<'default' | 'distance'>('default');
+
+const nearLabel = computed(() => {
+  const loc = userStore.preferredLocation;
+  const raw = loc?.display_name || loc?.city || '';
+  const name = String(raw || '').trim();
+  return name ? `使用位置：${name}` : '';
+});
 
 const formatTime = (value: string) => {
   const d = new Date(value);
@@ -136,16 +170,27 @@ const formatTime = (value: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const fetchPosts = async (reset = false) => {
+const fetchPosts = async (reset = false, allowFallback = true): Promise<void> => {
   if (loading.value) return;
   if (finished.value && !reset) return;
   loading.value = true;
   if (reset) status.value = 'loading';
   try {
     const nextOffset = reset ? 0 : offset.value;
+    const params: any = { limit, offset: nextOffset };
+    if (sortMode.value === 'distance') {
+      const loc = userStore.preferredLocation;
+      if (loc?.lat != null && loc?.lng != null) {
+        params.sort = 'distance';
+        params.near_lat = loc.lat;
+        params.near_lng = loc.lng;
+      } else {
+        sortMode.value = 'default';
+      }
+    }
     const data = (await request({
       url: '/posts',
-      data: { limit, offset: nextOffset },
+      data: params,
     })) as PostOut[];
     posts.value = reset ? data : posts.value.concat(data);
     offset.value = nextOffset + data.length;
@@ -153,11 +198,32 @@ const fetchPosts = async (reset = false) => {
     status.value = 'ready';
     errorText.value = '';
   } catch (e: any) {
+    if (allowFallback && sortMode.value === 'distance') {
+      sortMode.value = 'default';
+      uni.showToast({ title: '未设置位置，已切换到最新', icon: 'none' });
+      loading.value = false;
+      return fetchPosts(reset, false);
+    }
     status.value = 'error';
     errorText.value = e?.message || '加载失败';
   } finally {
     loading.value = false;
   }
+};
+
+const switchSort = async (mode: 'default' | 'distance') => {
+  if (mode === sortMode.value) return;
+  if (mode === 'distance') {
+    const loc = userStore.preferredLocation;
+    if (!loc) {
+      uni.showToast({ title: '请先在个人资料设置位置', icon: 'none' });
+      return;
+    }
+  }
+  sortMode.value = mode;
+  finished.value = false;
+  offset.value = 0;
+  await fetchPosts(true);
 };
 
 const goCreate = () => {
@@ -256,6 +322,26 @@ onReachBottom(() => {
 </script>
 
 <style lang="scss">
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sort-pill {
+  padding: 8px 12px;
+  background: rgba(255,255,255,.92);
+  border-radius: $ymd-v2-radius-pill;
+  border: 1px solid $ymd-v2-color-line;
+}
+.sort-pill.active {
+  background: $ymd-v2-color-brand;
+  border-color: $ymd-v2-color-brand;
+}
+.sort-text { font-size: $ymd-v2-font-sm; color: $ymd-v2-color-text; font-weight: 800; }
+.sort-pill.active .sort-text { color: #fff; }
+.sort-hint { margin-left: 6px; font-size: 12px; color: $ymd-v2-color-muted; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .list {
   display: flex;
   flex-direction: column;
